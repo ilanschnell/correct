@@ -12,6 +12,7 @@ typedef struct {
     PyObject_HEAD
     correct_convolutional *ctx;
     size_t inv_rate;
+    size_t order;
 } ConvObject;
 
 
@@ -182,6 +183,7 @@ Conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
         correct_convolutional_destroy(self->ctx);
     self->ctx = ctx;
     self->inv_rate = (size_t) inv_rate;
+    self->order = (size_t) order;
     PyMem_Free(poly);
     Py_DECREF(seq);
     return 0;
@@ -240,7 +242,8 @@ Conv_decode(ConvObject *self, PyObject *obj)
 {
     Py_buffer encoded;
     PyObject *res;
-    Py_ssize_t nbits, capacity;
+    Py_ssize_t nbits, capacity, expected;
+    size_t decoded_bits;
     ssize_t length;
 
     if (get_codeword(obj, &encoded, &nbits) < 0)
@@ -252,7 +255,16 @@ Conv_decode(ConvObject *self, PyObject *obj)
                      self->inv_rate);
         return NULL;
     }
-    capacity = (Py_ssize_t) (((size_t) nbits / self->inv_rate + 7) / 8);
+    decoded_bits = (size_t) nbits / self->inv_rate;
+    if (decoded_bits < self->order + 1 ||
+        (decoded_bits - self->order - 1) % 8) {
+        PyBuffer_Release(&encoded);
+        PyErr_SetString(PyExc_ValueError,
+                        "invalid convolutional codeword length");
+        return NULL;
+    }
+    expected = (Py_ssize_t) ((decoded_bits - self->order - 1) / 8);
+    capacity = (Py_ssize_t) ((decoded_bits + 7) / 8);
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL) {
         PyBuffer_Release(&encoded);
@@ -268,13 +280,13 @@ Conv_decode(ConvObject *self, PyObject *obj)
                         "could not decode convolutional codeword");
         return NULL;
     }
-    if (length > capacity) {
+    if (length < expected || length > capacity) {
         Py_DECREF(res);
         PyErr_SetString(PyExc_RuntimeError,
                         "convolutional decoder returned an invalid length");
         return NULL;
     }
-    if (_PyBytes_Resize(&res, (Py_ssize_t) length) < 0)
+    if (_PyBytes_Resize(&res, expected) < 0)
         return NULL;
     return res;
 }
