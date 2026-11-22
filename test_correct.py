@@ -161,4 +161,5 @@ class ReedSolomonTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    print("correct version:", correct.__version__)
     unittest.main()

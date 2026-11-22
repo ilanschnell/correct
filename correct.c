@@ -5,7 +5,7 @@
 #include "correct.h"
 
 
-#define CORRECT_VERSION  "0.1.0"
+#define CORRECT_VERSION  "0.2.0"
 
 
 static PyObject *BitarrayType;
