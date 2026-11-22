@@ -40,8 +40,8 @@ polynomials.  They are conventionally written in octal.  For example::
 This creates a rate 1/2, order 7 code: each input bit produces two output bits,
 using the generator polynomials ``161`` and ``127`` (octal).
 
-The following configurations are defined by libcorrect and exercised by the
-test suite:
+The following configurations are recommended by libcorrect and exercised by
+the test suite:
 
 ======  =====  ==========================
 Rate    Order  Polynomials (octal)
@@ -55,6 +55,12 @@ Rate    Order  Polynomials (octal)
 1/3     8      ``(0o333, 0o257, 0o351)``
 1/3     9      ``(0o417, 0o627, 0o675)``
 ======  =====  ==========================
+
+Other rates, orders, and generator polynomials are also possible.  The
+implementation builds its lookup tables from the supplied polynomials and is
+not limited to the configurations above.  However, not every combination
+produces a useful code; poorly chosen polynomials can provide weak error
+correction or even produce a catastrophic code.
 
 ``Convolutional.encode(data)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
