@@ -1,5 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <assert.h>
 #include <stdint.h>
 
 #include "correct.h"
@@ -55,6 +56,7 @@ bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
     if (total < 0)
         goto error;
     assert(total > 0 && total % 8 == 0);
+    assert(0 <= nbits && nbits <= total);
     if (nbits < total && PySequence_DelSlice(res, nbits, total) < 0)
         goto error;
 
@@ -213,6 +215,7 @@ conv_encode(ConvObject *self, PyObject *obj)
         self->ctx, (const uint8_t *) msg.buf, (size_t) msg.len,
         (uint8_t *) PyBytes_AS_STRING(data));
     PyBuffer_Release(&msg);
+    assert(actual == nbits);
     if (actual > nbytes * 8) {
         Py_DECREF(data);
         PyErr_SetString(PyExc_RuntimeError,
