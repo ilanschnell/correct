@@ -87,7 +87,7 @@ original data::
 transmitted, or modified using the normal bitarray operations.
 
 ``Convolutional.decode(codeword)``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Decode a big-endian bitarray produced by a compatible convolutional code and
 return ``bytes``.  A little-endian bitarray is rejected because its bit order
@@ -98,7 +98,7 @@ code's ability to recover the original message.  Protect the decoded data with
 a checksum or CRC when silent corruption matters.
 
 ``Convolutional.decode_soft(values)``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Soft decoding accepts one unsigned byte for every encoded bit.  Each value
 expresses confidence in the received bit:
