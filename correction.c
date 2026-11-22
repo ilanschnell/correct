@@ -171,8 +171,8 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
         if (value == (unsigned long) -1 && PyErr_Occurred())
             goto error;
         if (value > UINT16_MAX) {
-            PyErr_SetString(PyExc_OverflowError,
-                            "convolutional polynomial does not fit in 16 bits");
+            PyErr_SetString(PyExc_OverflowError, "convolutional "
+                            "polynomial does not fit in 16 bits");
             goto error;
         }
         poly[i] = (correct_convolutional_polynomial_t) value;
@@ -581,7 +581,8 @@ static PyMethodDef rs_methods[] = {
     {"encode", (PyCFunction) rs_encode, METH_O,
      "encode(data) -> bytes\n\nEncode one Reed-Solomon block."},
     {"decode", (PyCFunction) rs_decode, METH_VARARGS | METH_KEYWORDS,
-     "decode(encoded, erasures=None) -> bytes\n\nDecode one Reed-Solomon block."},
+     "decode(encoded, erasures=None) -> bytes\n\nDecode one Reed-Solomon "
+     "block."},
     {NULL}
 };
 
