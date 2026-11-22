@@ -71,7 +71,7 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
     is_bitarray = PyObject_IsInstance(obj, BitarrayType);
     if (is_bitarray < 0)
         return -1;
-    if (!is_bitarray) {
+    if (is_bitarray == 0) {
         PyErr_SetString(PyExc_TypeError, "expected a bitarray");
         return -1;
     }
@@ -79,8 +79,8 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
     endian = PyObject_GetAttrString(obj, "endian");
     if (endian == NULL)
         return -1;
-    is_big = PyUnicode_Check(endian) &&
-             PyUnicode_CompareWithASCIIString(endian, "big") == 0;
+    is_big = (PyUnicode_Check(endian) &&
+              PyUnicode_CompareWithASCIIString(endian, "big") == 0);
     Py_DECREF(endian);
     if (!is_big) {
         PyErr_SetString(PyExc_ValueError,
@@ -96,7 +96,7 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
 
 
 static void
-Conv_dealloc(ConvObject *self)
+conv_dealloc(ConvObject *self)
 {
     if (self->ctx != NULL)
         correct_convolutional_destroy(self->ctx);
@@ -105,7 +105,7 @@ Conv_dealloc(ConvObject *self)
 
 
 static int
-Conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
+conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {
         "inv_rate", "order", "polynomials", NULL
@@ -182,7 +182,7 @@ error:
 
 
 static PyObject *
-Conv_encode(ConvObject *self, PyObject *obj)
+conv_encode(ConvObject *self, PyObject *obj)
 {
     Py_buffer msg;
     PyObject *data = NULL, *res;
@@ -224,7 +224,7 @@ Conv_encode(ConvObject *self, PyObject *obj)
 
 
 static PyObject *
-Conv_decode(ConvObject *self, PyObject *obj)
+conv_decode(ConvObject *self, PyObject *obj)
 {
     Py_buffer encoded;
     PyObject *res;
@@ -279,7 +279,7 @@ Conv_decode(ConvObject *self, PyObject *obj)
 
 
 static PyObject *
-Conv_decode_soft(ConvObject *self, PyObject *obj)
+conv_decode_soft(ConvObject *self, PyObject *obj)
 {
     Py_buffer encoded;
     PyObject *res;
@@ -324,12 +324,12 @@ Conv_decode_soft(ConvObject *self, PyObject *obj)
 }
 
 
-static PyMethodDef Conv_methods[] = {
-    {"encode", (PyCFunction) Conv_encode, METH_O,
+static PyMethodDef conv_methods[] = {
+    {"encode", (PyCFunction) conv_encode, METH_O,
      "encode(data) -> bitarray\n\nEncode a bytes-like object."},
-    {"decode", (PyCFunction) Conv_decode, METH_O,
+    {"decode", (PyCFunction) conv_decode, METH_O,
      "decode(codeword) -> bytes\n\nDecode a big-endian bitarray."},
-    {"decode_soft", (PyCFunction) Conv_decode_soft, METH_O,
+    {"decode_soft", (PyCFunction) conv_decode_soft, METH_O,
      "decode_soft(values) -> bytes\n\nDecode 8-bit soft-decision values."},
     {NULL, NULL, 0, NULL}
 };
@@ -339,17 +339,17 @@ static PyTypeObject Conv_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "correct.Convolutional",
     .tp_basicsize = sizeof(ConvObject),
-    .tp_dealloc = (destructor) Conv_dealloc,
+    .tp_dealloc = (destructor) conv_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Convolutional(inv_rate, order, polynomials)",
-    .tp_methods = Conv_methods,
-    .tp_init = (initproc) Conv_init,
+    .tp_methods = conv_methods,
+    .tp_init = (initproc) conv_init,
     .tp_new = PyType_GenericNew,
 };
 
 
 static void
-RS_dealloc(RSObject *self)
+rs_dealloc(RSObject *self)
 {
     if (self->ctx != NULL)
         correct_reed_solomon_destroy(self->ctx);
@@ -358,7 +358,7 @@ RS_dealloc(RSObject *self)
 
 
 static int
-RS_init(RSObject *self, PyObject *args, PyObject *kwargs)
+rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {
         "num_roots", "primitive_polynomial", "first_root", "root_gap", NULL
@@ -400,7 +400,7 @@ RS_init(RSObject *self, PyObject *args, PyObject *kwargs)
 
 
 static PyObject *
-RS_encode(RSObject *self, PyObject *obj)
+rs_encode(RSObject *self, PyObject *obj)
 {
     Py_buffer msg;
     PyObject *res;
@@ -437,7 +437,7 @@ RS_encode(RSObject *self, PyObject *obj)
 
 
 static PyObject *
-RS_decode(RSObject *self, PyObject *args, PyObject *kwargs)
+rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {"encoded", "erasures", NULL};
     PyObject *obj, *erasures = Py_None, *seq = NULL, *res = NULL;
@@ -529,10 +529,10 @@ error:
 }
 
 
-static PyMethodDef RS_methods[] = {
-    {"encode", (PyCFunction) RS_encode, METH_O,
+static PyMethodDef rs_methods[] = {
+    {"encode", (PyCFunction) rs_encode, METH_O,
      "encode(data) -> bytes\n\nEncode one Reed-Solomon block."},
-    {"decode", (PyCFunction) RS_decode, METH_VARARGS | METH_KEYWORDS,
+    {"decode", (PyCFunction) rs_decode, METH_VARARGS | METH_KEYWORDS,
      "decode(encoded, erasures=None) -> bytes\n\nDecode one Reed-Solomon block."},
     {NULL, NULL, 0, NULL}
 };
@@ -542,12 +542,12 @@ static PyTypeObject RS_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "correct.ReedSolomon",
     .tp_basicsize = sizeof(RSObject),
-    .tp_dealloc = (destructor) RS_dealloc,
+    .tp_dealloc = (destructor) rs_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ReedSolomon(num_roots, primitive_polynomial=0x11d, "
               "first_root=1, root_gap=1)",
-    .tp_methods = RS_methods,
-    .tp_init = (initproc) RS_init,
+    .tp_methods = rs_methods,
+    .tp_init = (initproc) rs_init,
     .tp_new = PyType_GenericNew,
 };
 
