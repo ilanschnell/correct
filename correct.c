@@ -5,6 +5,9 @@
 #include "correct.h"
 
 
+#define CORRECT_VERSION  "0.1.0"
+
+
 static PyObject *BitarrayType;
 
 
@@ -590,6 +593,10 @@ PyInit_correct(void)
     module = PyModule_Create(&moduledef);
     if (module == NULL)
         return NULL;
+
+    if (PyModule_AddStringConstant(module, "__version__",
+                                   CORRECT_VERSION) < 0)
+        goto error;
 
     Py_INCREF(&Conv_Type);
     if (PyModule_AddObject(module, "Convolutional",
