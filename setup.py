@@ -4,6 +4,7 @@ from setuptools import Extension, setup
 
 
 kwds = {}
+kwds['long_description'] = open('README.rst').read()
 
 # Read version from correct.c
 pat = re.compile(r'#define\s+CORRECT_VERSION\s+"(\S+)"', re.M)
@@ -17,6 +18,8 @@ headers = sorted(glob("libcorrect/include/**/*.h", recursive=True))
 
 setup(
     name = "correct",
+    description = "Forward Error Correction - bindings for libcorrect",
+    long_description_content_type = "text/x-rst",
     author = "Ilan Schnell",
     author_email = "ilanschnell@gmail.com",
     url = "https://github.com/ilanschnell/correct",
