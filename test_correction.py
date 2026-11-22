@@ -1,10 +1,16 @@
+import sys
 import unittest
 from array import array
+from concurrent.futures import ThreadPoolExecutor
+from sysconfig import get_config_var
+from threading import Barrier
 
 from bitarray import bitarray
 
 import correction
 
+
+GIL_DISABLED = get_config_var("Py_GIL_DISABLED") in (1, "1")
 
 CONV_CODES = [
     (2, 6, (0o73, 0o61)),
@@ -160,6 +166,61 @@ class ReedSolomonTests(unittest.TestCase):
             correction.ReedSolomon(32, root_gap=256)
 
 
+NTHREADS = 4
+
+
+def run_concurrently(func):
+    """Call func simultaneously in several threads and return the results."""
+    barrier = Barrier(NTHREADS)
+
+    def worker(index):
+        barrier.wait()
+        return func(index)
+
+    with ThreadPoolExecutor(max_workers=NTHREADS) as executor:
+        futures = [executor.submit(worker, i) for i in range(NTHREADS)]
+        return [future.result() for future in futures]
+
+
+@unittest.skipUnless(GIL_DISABLED, "requires free-threaded Python")
+class FreeThreadingTests(unittest.TestCase):
+
+    def test_gil_disabled(self):
+        self.assertFalse(sys._is_gil_enabled())
+
+    def test_convolutional(self):
+        conv = correction.Convolutional(2, 7, (0o161, 0o127))
+
+        def work(index):
+            for count in range(10):
+                msg = bytes((index + count + i) % 256 for i in range(64))
+                encoded = conv.encode(msg)
+                if conv.decode(encoded) != msg:
+                    return False
+                soft = bytearray(255 if bit else 0 for bit in encoded)
+                if conv.decode_soft(soft) != msg:
+                    return False
+            return True
+
+        self.assertEqual(run_concurrently(work), NTHREADS * [True])
+
+    def test_reed_solomon(self):
+        rs = correction.ReedSolomon(32)
+
+        def work(index):
+            for count in range(10):
+                msg = bytes((index + count + i) % 256 for i in range(100))
+                encoded = rs.encode(msg)
+                damaged = bytearray(encoded)
+                damaged[(index + count) % len(damaged)] ^= 0xff
+                if rs.decode(damaged) != msg:
+                    return False
+            return True
+
+        self.assertEqual(run_concurrently(work), NTHREADS * [True])
+
+
 if __name__ == '__main__':
     print("correction version:", correction.__version__)
+    print("GIL_DISABLED:", GIL_DISABLED)
     unittest.main()

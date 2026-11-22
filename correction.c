@@ -11,12 +11,24 @@
 
 static PyObject *BitarrayType;
 
+#ifdef Py_GIL_DISABLED
+static PyMutex conv_create_mutex;
+#define LOCK_CODEC(obj)    PyMutex_Lock(&(obj)->mutex)
+#define UNLOCK_CODEC(obj)  PyMutex_Unlock(&(obj)->mutex)
+#else
+#define LOCK_CODEC(obj)
+#define UNLOCK_CODEC(obj)
+#endif
+
 
 typedef struct {
     PyObject_HEAD
     correct_convolutional *ctx;
     size_t inv_rate;
     size_t order;
+#ifdef Py_GIL_DISABLED
+    PyMutex mutex;
+#endif
 } ConvObject;
 
 
@@ -24,6 +36,9 @@ typedef struct {
     PyObject_HEAD
     correct_reed_solomon *ctx;
     size_t num_roots;
+#ifdef Py_GIL_DISABLED
+    PyMutex mutex;
+#endif
 } RSObject;
 
 
@@ -163,8 +178,14 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
         poly[i] = (correct_convolutional_polynomial_t) value;
     }
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&conv_create_mutex);
+#endif
     ctx = correct_convolutional_create((size_t) inv_rate, (size_t) order,
                                        poly);
+#ifdef Py_GIL_DISABLED
+    PyMutex_Unlock(&conv_create_mutex);
+#endif
     if (ctx == NULL) {
         PyErr_NoMemory();
         goto error;
@@ -211,9 +232,11 @@ conv_encode(ConvObject *self, PyObject *obj)
         PyBuffer_Release(&msg);
         return NULL;
     }
+    LOCK_CODEC(self);
     actual = correct_convolutional_encode(
         self->ctx, (const uint8_t *) msg.buf, (size_t) msg.len,
         (uint8_t *) PyBytes_AS_STRING(data));
+    UNLOCK_CODEC(self);
     PyBuffer_Release(&msg);
     assert(actual == nbits);
     if (actual > nbytes * 8) {
@@ -262,9 +285,11 @@ conv_decode(ConvObject *self, PyObject *obj)
         PyBuffer_Release(&encoded);
         return NULL;
     }
+    LOCK_CODEC(self);
     length = correct_convolutional_decode(
         self->ctx, (const uint8_t *) encoded.buf, (size_t) nbits,
         (uint8_t *) PyBytes_AS_STRING(res));
+    UNLOCK_CODEC(self);
     PyBuffer_Release(&encoded);
     if (length < 0) {
         Py_DECREF(res);
@@ -318,9 +343,11 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
         return NULL;
     }
 
+    LOCK_CODEC(self);
     length = correct_convolutional_decode_soft(
         self->ctx, (const correct_convolutional_soft_t *) encoded.buf,
         (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
+    UNLOCK_CODEC(self);
     PyBuffer_Release(&encoded);
     if (length < 0) {
         Py_DECREF(res);
@@ -439,9 +466,11 @@ rs_encode(RSObject *self, PyObject *obj)
         PyBuffer_Release(&msg);
         return NULL;
     }
+    LOCK_CODEC(self);
     status = correct_reed_solomon_encode(
         self->ctx, (const uint8_t *) msg.buf, (size_t) msg.len,
         (uint8_t *) PyBytes_AS_STRING(res));
+    UNLOCK_CODEC(self);
     PyBuffer_Release(&msg);
     if (status < 0) {
         Py_DECREF(res);
@@ -508,6 +537,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL)
         goto error;
+    LOCK_CODEC(self);
     if (nerasures) {
         length = correct_reed_solomon_decode_with_erasures(
             self->ctx, (const uint8_t *) encoded.buf,
@@ -519,6 +549,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
             self->ctx, (const uint8_t *) encoded.buf,
             (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
     }
+    UNLOCK_CODEC(self);
     if (length < 0) {
         PyErr_SetString(PyExc_ValueError,
                         "could not decode Reed-Solomon block");
@@ -600,6 +631,11 @@ PyInit_correction(void)
     if (PyModule_AddStringConstant(module, "__version__",
                                    CORRECTION_VERSION) < 0)
         goto error;
+
+#ifdef Py_GIL_DISABLED
+    if (PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED) < 0)
+        goto error;
+#endif
 
     Py_INCREF(&Conv_Type);
     if (PyModule_AddObject(module, "Convolutional",

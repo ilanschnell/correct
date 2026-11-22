@@ -1,5 +1,6 @@
 2026-11-XX  0.4.0:
 ------------------
+  * add support for free-threaded Python
 
 
 2026-11-22  0.3.1:
