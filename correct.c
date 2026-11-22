@@ -41,37 +41,23 @@ get_buffer(PyObject *obj, Py_buffer *view)
 static PyObject *
 bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
 {
-    PyObject *args = NULL, *kwargs = NULL, *res = NULL, *tmp;
+    PyObject *res;
     Py_ssize_t total;
 
-    args = PyTuple_New(0);
-    kwargs = Py_BuildValue("{s:s}", "endian", "big");
-    if (args == NULL || kwargs == NULL)
-        goto error;
-
-    res = PyObject_Call(BitarrayType, args, kwargs);
+    res = PyObject_CallFunction(BitarrayType, "Os", data, "big");
     if (res == NULL)
-        goto error;
-
-    tmp = PyObject_CallMethod(res, "frombytes", "O", data);
-    if (tmp == NULL)
-        goto error;
-    Py_DECREF(tmp);
+        return NULL;
 
     total = PyObject_Length(res);
     if (total < 0)
         goto error;
+    assert(total > 0 && total % 8 == 0);
     if (nbits < total && PySequence_DelSlice(res, nbits, total) < 0)
         goto error;
 
-    Py_DECREF(args);
-    Py_DECREF(kwargs);
     return res;
-
-error:
-    Py_XDECREF(args);
-    Py_XDECREF(kwargs);
-    Py_XDECREF(res);
+ error:
+    Py_DECREF(res);
     return NULL;
 }
 
@@ -598,15 +584,17 @@ PyInit_correct(void)
     if (PyModule_AddObject(module, "Convolutional",
                            (PyObject *) &Conv_Type) < 0) {
         Py_DECREF(&Conv_Type);
-        Py_DECREF(module);
-        return NULL;
+        goto error;
     }
     Py_INCREF(&RS_Type);
     if (PyModule_AddObject(module, "ReedSolomon",
                            (PyObject *) &RS_Type) < 0) {
         Py_DECREF(&RS_Type);
-        Py_DECREF(module);
-        return NULL;
+        goto error;
     }
     return module;
+
+ error:
+    Py_DECREF(module);
+    return NULL;
 }
