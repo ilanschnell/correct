@@ -11,5 +11,6 @@ setup(
             extra_objects=["libcorrect.a"],
         ),
     ],
-    install_requires=["bitarray"],
+    py_modules="test_correct",
+    install_requires=["bitarray >=3.4"],
 )
