@@ -35,6 +35,10 @@ Install the package from PyPI::
 
     python -m pip install libcorrect
 
+Run the self-tests::
+
+    python -m test_correct
+
 The Python binding and the vendored libcorrect sources are distributed under
 BSD licenses.  See ``LICENSE`` and ``libcorrect/LICENSE`` for details.
 
