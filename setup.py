@@ -17,7 +17,7 @@ sources.append("correct.c")
 headers = sorted(glob("libcorrect/include/**/*.h", recursive=True))
 
 setup(
-    name = "libcorrect",
+    name = "correction",
     description = "Forward Error Correction - bindings for libcorrect",
     long_description_content_type = "text/x-rst",
     author = "Ilan Schnell",
