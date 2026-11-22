@@ -638,6 +638,11 @@ PyInit_correction(void)
         goto error;
 #endif
 
+#ifndef NDEBUG
+    if (PyModule_AddIntConstant(module, "DEBUG", 1) < 0)
+        goto error;
+#endif
+
     Py_INCREF(&Conv_Type);
     if (PyModule_AddObject(module, "Convolutional",
                            (PyObject *) &Conv_Type) < 0) {

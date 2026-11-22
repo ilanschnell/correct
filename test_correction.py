@@ -223,4 +223,5 @@ class FreeThreadingTests(unittest.TestCase):
 if __name__ == '__main__':
     print("correction version:", correction.__version__)
     print("GIL_DISABLED:", GIL_DISABLED)
+    print("DEBUG: %s" % getattr(correction, "DEBUG", 0))
     unittest.main()
