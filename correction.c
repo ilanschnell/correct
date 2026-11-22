@@ -6,7 +6,7 @@
 #include "correct.h"
 
 
-#define CORRECT_VERSION  "0.2.0"
+#define CORRECTION_VERSION  "0.3.0"
 
 
 static PyObject *BitarrayType;
@@ -578,7 +578,7 @@ static struct PyModuleDef moduledef = {
 
 
 PyMODINIT_FUNC
-PyInit_correct(void)
+PyInit_correction(void)
 {
     PyObject *module, *bitarray;
 
@@ -598,7 +598,7 @@ PyInit_correct(void)
         return NULL;
 
     if (PyModule_AddStringConstant(module, "__version__",
-                                   CORRECT_VERSION) < 0)
+                                   CORRECTION_VERSION) < 0)
         goto error;
 
     Py_INCREF(&Conv_Type);

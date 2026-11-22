@@ -1,7 +1,7 @@
-correct
-=======
+correction
+==========
 
-``correct`` provides Python bindings for the convolutional and Reed-Solomon
+``correction`` provides Python bindings for the convolutional and Reed-Solomon
 forward error correction algorithms from `libcorrect`_.  Convolutional codes
 use bitarrays for encoded data, while Reed-Solomon codes operate on bytes.
 
@@ -12,11 +12,11 @@ Installation
 
 Install the package from PyPI::
 
-    python -m pip install libcorrect
+    python -m pip install correction
 
 Run the self-tests::
 
-    python -m test_correct
+    python -m test_correction
 
 
 Convolutional codes
@@ -35,7 +35,7 @@ The generator ``polynomials`` are bit masks which select the shift-register
 bits XORed to produce each output bit.  There must be exactly ``inv_rate``
 polynomials.  They are conventionally written in octal.  For example::
 
-    conv = correct.Convolutional(2, 7, (0o161, 0o127))
+    conv = correction.Convolutional(2, 7, (0o161, 0o127))
 
 This creates a rate 1/2, order 7 code: each input bit produces two output bits,
 using the generator polynomials ``161`` and ``127`` (octal).
@@ -71,8 +71,8 @@ bitarray preserves that length without exposing byte-padding details.
 The following example encodes a message, damages three bits, and recovers the
 original data::
 
-    >>> import correct
-    >>> conv = correct.Convolutional(2, 7, (0o161, 0o127))
+    >>> import correction
+    >>> conv = correction.Convolutional(2, 7, (0o161, 0o127))
     >>> encoded = conv.encode(b"Hello world!")
     >>> encoded.endian
     'big'
@@ -121,7 +121,7 @@ For example, convert a hard codeword to soft symbols and erase one symbol::
 Reed-Solomon codes
 ------------------
 
-``correct.ReedSolomon(num_roots, primitive_polynomial=0x11d,
+``correction.ReedSolomon(num_roots, primitive_polynomial=0x11d,
 first_root=1, root_gap=1)`` creates a Reed-Solomon code over 8-bit symbols.  A
 full encoded block contains at most 255 bytes.
 
@@ -143,7 +143,7 @@ Encode a bytes-like object and return ``bytes`` containing the original data
 followed by ``num_roots`` parity bytes.  Short messages use virtual leading
 padding, which is not included in the result::
 
-    >>> rs = correct.ReedSolomon(32)
+    >>> rs = correction.ReedSolomon(32)
     >>> encoded = rs.encode(b"Reed-Solomon")
     >>> len(encoded)
     44
@@ -174,15 +174,6 @@ For example, mark several corrupted bytes as erasures::
 
 As with convolutional decoding, sufficiently severe corruption is not always
 detectable.  Use a checksum or CRC when the decoded message must be verified.
-
-
-Version
--------
-
-The installed version is available as::
-
-    >>> correct.__version__
-    '0.2.0'
 
 
 The Python binding and the vendored libcorrect sources are distributed under

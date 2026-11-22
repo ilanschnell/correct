@@ -6,7 +6,7 @@ build:
 
 
 test: build
-	python test_correct.py
+	python test_correction.py
 	python -m doctest README.rst
 
 

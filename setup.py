@@ -6,13 +6,13 @@ from setuptools import Extension, setup
 kwds = {}
 kwds['long_description'] = open('README.rst').read()
 
-# Read version from correct.c
-pat = re.compile(r'#define\s+CORRECT_VERSION\s+"(\S+)"', re.M)
-data = open('correct.c').read()
+# Read version from correction.c
+pat = re.compile(r'#define\s+CORRECTION_VERSION\s+"(\S+)"', re.M)
+data = open('correction.c').read()
 kwds['version'] = pat.search(data).group(1)
 
 sources = sorted(glob("libcorrect/src/*/*.c"))
-sources.append("correct.c")
+sources.append("correction.c")
 
 headers = sorted(glob("libcorrect/include/**/*.h", recursive=True))
 
@@ -43,13 +43,13 @@ setup(
     ],
     ext_modules=[
         Extension(
-            "correct",
+            "correction",
             sources = sources,
             include_dirs = ["libcorrect/include"],
             depends = headers,
         ),
     ],
-    py_modules = ["test_correct"],
+    py_modules = ["test_correction"],
     install_requires = ["bitarray >=3.4"],
     **kwds
 )
