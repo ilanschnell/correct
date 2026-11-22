@@ -20,6 +20,7 @@ setup(
     author = "Ilan Schnell",
     author_email = "ilanschnell@gmail.com",
     url = "https://github.com/ilanschnell/correct",
+    license = "BSD",
     license_files = ["libcorrect/LICENSE"],
     python_requires = ">=3.9",
     classifiers = [
