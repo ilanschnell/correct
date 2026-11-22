@@ -36,6 +36,17 @@ class ConvolutionalTests(unittest.TestCase):
                 self.assertEqual(len(encoded) % inv_rate, 0)
                 self.assertEqual(conv.decode(encoded), msg)
 
+    def test_default_polynomials(self):
+        msg = b'default convolutional code'
+        for inv_rate, order, polynomials in CONV_CODES:
+            explicit = correction.Convolutional(inv_rate, order, polynomials)
+            expected = explicit.encode(msg)
+            for default in [correction.Convolutional(inv_rate, order),
+                            correction.Convolutional(inv_rate, order, None)]:
+                encoded = default.encode(msg)
+                self.assertEqual(encoded, expected)
+                self.assertEqual(default.decode(encoded), msg)
+
     def test_correct_error(self):
         conv = correction.Convolutional(2, 7, (0o161, 0o127))
         msg = b'convolutional code'
@@ -85,6 +96,10 @@ class ConvolutionalTests(unittest.TestCase):
             conv.decode_soft(bytearray(len(encoded)))
 
     def test_invalid_parameters(self):
+        for inv_rate, order in [(2, 5), (2, 10), (3, 5), (3, 10), (4, 7)]:
+            with self.assertRaisesRegex(ValueError,
+                                        "polynomials must be specified"):
+                correction.Convolutional(inv_rate, order)
         for inv_rate in (0, 1):
             with self.assertRaises(ValueError):
                 correction.Convolutional(inv_rate, 7, ())

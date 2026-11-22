@@ -31,17 +31,22 @@ The ``order`` is the width, in bits, of the encoder's shift register.  It
 controls how much preceding input affects each output.  Larger orders can
 provide stronger codes, but decoding cost and memory use increase rapidly.
 
-The generator ``polynomials`` are bit masks which select the shift-register
-bits XORed to produce each output bit.  There must be exactly ``inv_rate``
-polynomials.  They are conventionally written in octal.  For example::
+The optional generator ``polynomials`` are bit masks which select the
+shift-register bits XORed to produce each output bit.  When supplied, there
+must be exactly ``inv_rate`` polynomials.  They are conventionally written in
+octal.  For example::
+
+    conv = correction.Convolutional(2, 7)
+
+This creates a rate 1/2, order 7 code: each input bit produces two output bits,
+using the recommended generator polynomials ``161`` and ``127`` (octal).  It
+is equivalent to::
 
     conv = correction.Convolutional(2, 7, (0o161, 0o127))
 
-This creates a rate 1/2, order 7 code: each input bit produces two output bits,
-using the generator polynomials ``161`` and ``127`` (octal).
-
-The following configurations are recommended by libcorrect and exercised by
-the test suite:
+When ``polynomials`` is omitted, the following configurations are selected
+automatically.  They are recommended by libcorrect and exercised by the test
+suite:
 
 ======  =====  ==========================
 Rate    Order  Polynomials (octal)
