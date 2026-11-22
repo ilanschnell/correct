@@ -7,6 +7,7 @@ build:
 
 test: build
 	python test_correct.py
+	python -m doctest README.rst
 
 
 clean:
