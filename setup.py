@@ -21,7 +21,7 @@ setup(
     author_email = "ilanschnell@gmail.com",
     url = "https://github.com/ilanschnell/correct",
     license = "BSD",
-    license_files = ["libcorrect/LICENSE"],
+    license_files = ["LICENSE", "libcorrect/LICENSE"],
     python_requires = ">=3.9",
     classifiers = [
         "Development Status :: 3 - Alpha",
