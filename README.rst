@@ -83,16 +83,14 @@ The following example encodes a message, damages three bits, and recovers the
 original data::
 
     >>> import correction
-    >>> conv = correction.Convolutional(2, 7, (0o161, 0o127))
-    >>> encoded = conv.encode(b"Hello world!")
-    >>> encoded.endian
-    'big'
-    >>> len(encoded)
-    208
+    >>> conv = correction.Convolutional(2, 8)
+    >>> encoded = conv.encode(b"Hello World!")
+    >>> len(encoded), encoded.padbits, encoded.endian
+    (210, 6, 'big')
     >>> for i in 97, 123, 198:
     ...   encoded.invert(i)
     >>> conv.decode(encoded)
-    b'Hello world!'
+    b'Hello World!'
 
 ``encoded`` is a big-endian ``bitarray.bitarray`` and can be stored,
 transmitted, or modified using the normal bitarray operations.

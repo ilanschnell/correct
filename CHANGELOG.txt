@@ -1,5 +1,6 @@
 2026-11-XX  0.4.0:
 ------------------
+  * add recommended convolutional polynomial defaults
   * add support for free-threaded Python
 
 
