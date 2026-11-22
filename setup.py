@@ -1,5 +1,11 @@
+from glob import glob
 from setuptools import Extension, setup
 
+
+sources = sorted(glob("src/*/*.c"))
+sources.append("correct.c")
+
+headers = sorted(glob("src/include/**/*.h", recursive=True))
 
 setup(
     name="correct",
@@ -7,10 +13,11 @@ setup(
     ext_modules=[
         Extension(
             "correct",
-            sources=["correct.c"],
-            extra_objects=["libcorrect.a"],
+            sources=sources,
+            include_dirs=["src/include"],
+            depends=headers,
         ),
     ],
-    py_modules="test_correct",
+    py_modules=["test_correct"],
     install_requires=["bitarray >=3.4"],
 )
