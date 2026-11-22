@@ -22,7 +22,7 @@ setup(
     long_description_content_type = "text/x-rst",
     author = "Ilan Schnell",
     author_email = "ilanschnell@gmail.com",
-    url = "https://github.com/ilanschnell/correct",
+    url = "https://github.com/ilanschnell/correction",
     license = "BSD",
     license_files = ["LICENSE", "libcorrect/LICENSE"],
     python_requires = ">=3.9",

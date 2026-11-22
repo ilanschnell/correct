@@ -354,7 +354,7 @@ static PyMethodDef conv_methods[] = {
 
 static PyTypeObject Conv_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "correct.Convolutional",
+    .tp_name = "correction.Convolutional",
     .tp_basicsize = sizeof(ConvObject),
     .tp_dealloc = (destructor) conv_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
@@ -557,7 +557,7 @@ static PyMethodDef rs_methods[] = {
 
 static PyTypeObject RS_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "correct.ReedSolomon",
+    .tp_name = "correction.ReedSolomon",
     .tp_basicsize = sizeof(RSObject),
     .tp_dealloc = (destructor) rs_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
@@ -571,7 +571,7 @@ static PyTypeObject RS_Type = {
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    .m_name = "correct",
+    .m_name = "correction",
     .m_doc = "Forward error correction using libcorrect.",
     .m_size = -1,
 };
