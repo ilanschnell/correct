@@ -40,14 +40,18 @@ class ConvolutionalTests(unittest.TestCase):
             self.assertEqual(conv.decode(damaged), msg)
 
     def test_soft_decoding(self):
-        conv = correct.Convolutional(2, 7, (0o161, 0o127))
-        msg = b'soft decisions'
-        encoded = conv.encode(msg)
-        soft = bytearray(255 if bit else 0 for bit in encoded)
-        self.assertEqual(conv.decode_soft(soft), msg)
+        for inv_rate, order, polynomials in CONV_CODES:
+            conv = correct.Convolutional(inv_rate, order, polynomials)
+            for msg in (b'', b'a', b'soft decisions'):
+                encoded = conv.encode(msg)
+                soft = bytearray(255 if bit else 0 for bit in encoded)
+                self.assertEqual(conv.decode_soft(soft), msg)
 
+        conv = correct.Convolutional(2, 7, (0o161, 0o127))
+        encoded = conv.encode(b'soft decisions')
+        soft = bytearray(255 if bit else 0 for bit in encoded)
         soft[len(soft) // 2] = 128
-        self.assertEqual(conv.decode_soft(soft), msg)
+        self.assertEqual(conv.decode_soft(soft), b'soft decisions')
 
     def test_buffers(self):
         conv = correct.Convolutional(2, 7, (0o161, 0o127))
@@ -75,8 +79,9 @@ class ConvolutionalTests(unittest.TestCase):
             conv.decode_soft(bytearray(len(encoded)))
 
     def test_invalid_parameters(self):
-        with self.assertRaises(ValueError):
-            correct.Convolutional(0, 7, ())
+        for inv_rate in (0, 1):
+            with self.assertRaises(ValueError):
+                correct.Convolutional(inv_rate, 7, ())
         for order in (0, 17):
             with self.assertRaises(ValueError):
                 correct.Convolutional(2, order, (0o161, 0o127))
@@ -84,9 +89,9 @@ class ConvolutionalTests(unittest.TestCase):
             correct.Convolutional(2, 7, (0o161,))
         for polynomial in (-1, 1 << 16):
             with self.assertRaises(OverflowError):
-                correct.Convolutional(1, 7, (polynomial,))
+                correct.Convolutional(2, 7, (polynomial, 0o127))
         with self.assertRaises(TypeError):
-            correct.Convolutional(1, 7, ('x',))
+            correct.Convolutional(2, 7, ('x', 0o127))
 
 
 class ReedSolomonTests(unittest.TestCase):

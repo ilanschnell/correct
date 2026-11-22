@@ -117,8 +117,8 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "nnO:Convolutional",
                                      kwlist, &inv_rate, &order, &obj))
         return -1;
-    if (inv_rate <= 0) {
-        PyErr_SetString(PyExc_ValueError, "inv_rate must be positive");
+    if (inv_rate < 2) {
+        PyErr_SetString(PyExc_ValueError, "inv_rate must be at least 2");
         return -1;
     }
     if (order <= 0 || order > 16) {
@@ -148,7 +148,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     for (i = 0; i < inv_rate; i++) {
         unsigned long value = PyLong_AsUnsignedLong(
             PySequence_Fast_GET_ITEM(seq, i));
-        if (value == -1 && PyErr_Occurred())
+        if (value == (unsigned long) -1 && PyErr_Occurred())
             goto error;
         if (value > UINT16_MAX) {
             PyErr_SetString(PyExc_OverflowError,
@@ -283,7 +283,8 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
 {
     Py_buffer encoded;
     PyObject *res;
-    Py_ssize_t capacity;
+    Py_ssize_t capacity, expected;
+    size_t decoded_bits;
     ssize_t length;
 
     if (get_buffer(obj, &encoded) < 0)
@@ -295,7 +296,16 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
                      self->inv_rate);
         return NULL;
     }
-    capacity = (Py_ssize_t) (((size_t) encoded.len / self->inv_rate + 7) / 8);
+    decoded_bits = (size_t) encoded.len / self->inv_rate;
+    if (decoded_bits < self->order + 1 ||
+        (decoded_bits - self->order - 1) % 8) {
+        PyBuffer_Release(&encoded);
+        PyErr_SetString(PyExc_ValueError,
+                        "invalid convolutional soft-symbol length");
+        return NULL;
+    }
+    expected = (Py_ssize_t) ((decoded_bits - self->order - 1) / 8);
+    capacity = (Py_ssize_t) ((decoded_bits + 7) / 8);
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL) {
         PyBuffer_Release(&encoded);
@@ -312,13 +322,13 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
                         "could not decode convolutional soft symbols");
         return NULL;
     }
-    if (length > capacity) {
+    if (length < expected || length > capacity) {
         Py_DECREF(res);
         PyErr_SetString(PyExc_RuntimeError,
                         "convolutional decoder returned an invalid length");
         return NULL;
     }
-    if (_PyBytes_Resize(&res, (Py_ssize_t) length) < 0)
+    if (_PyBytes_Resize(&res, expected) < 0)
         return NULL;
 
     return res;
