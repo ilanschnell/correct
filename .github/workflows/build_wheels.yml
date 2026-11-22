@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build_wheels:
+    if: ${{ false }}
     name: Build wheels on ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -53,7 +54,7 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    needs: build_sdist
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
