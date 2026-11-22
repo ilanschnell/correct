@@ -33,7 +33,7 @@ Installation
 
 Install the package from PyPI::
 
-    python -m pip install correct
+    python -m pip install libcorrect
 
 The Python binding and the vendored libcorrect sources are distributed under
 BSD licenses.  See ``LICENSE`` and ``libcorrect/LICENSE`` for details.
