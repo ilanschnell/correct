@@ -21,27 +21,6 @@ static PyMutex conv_create_mutex;
 #endif
 
 
-typedef struct {
-    PyObject_HEAD
-    correct_convolutional *ctx;
-    size_t inv_rate;
-    size_t order;
-#ifdef Py_GIL_DISABLED
-    PyMutex mutex;
-#endif
-} ConvObject;
-
-
-typedef struct {
-    PyObject_HEAD
-    correct_reed_solomon *ctx;
-    size_t num_roots;
-#ifdef Py_GIL_DISABLED
-    PyMutex mutex;
-#endif
-} RSObject;
-
-
 static int
 get_buffer(PyObject *obj, Py_buffer *view)
 {
@@ -82,6 +61,7 @@ bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
     return NULL;
 }
 
+/* -------------------------  Convolutional codes  ----------------------- */
 
 static int
 get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
@@ -114,6 +94,17 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
         return -1;
     return get_buffer(obj, view);
 }
+
+
+typedef struct {
+    PyObject_HEAD
+    correct_convolutional *ctx;
+    size_t inv_rate;
+    size_t order;
+#ifdef Py_GIL_DISABLED
+    PyMutex mutex;
+#endif
+} ConvObject;
 
 
 static void
@@ -417,6 +408,17 @@ static PyTypeObject Conv_Type = {
     .tp_init = (initproc) conv_init,
     .tp_new = PyType_GenericNew,
 };
+
+/* --------------------------  Reed-Solomon codes  ----------------------- */
+
+typedef struct {
+    PyObject_HEAD
+    correct_reed_solomon *ctx;
+    size_t num_roots;
+#ifdef Py_GIL_DISABLED
+    PyMutex mutex;
+#endif
+} RSObject;
 
 
 static void
