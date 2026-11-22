@@ -1,11 +1,11 @@
-.PHONY: all clean test
+.PHONY: build clean test
 
 
-correct.so: correct.c
+build:
 	python setup.py build_ext --inplace
 
 
-test: correct.so
+test: build
 	python test_correct.py
 
 
