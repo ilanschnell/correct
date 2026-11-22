@@ -56,6 +56,7 @@ bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
         goto error;
 
     return res;
+
  error:
     Py_DECREF(res);
     return NULL;
@@ -107,9 +108,7 @@ conv_dealloc(ConvObject *self)
 static int
 conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
-    static char *kwlist[] = {
-        "inv_rate", "order", "polynomials", NULL
-    };
+    static char *kwlist[] = {"inv_rate", "order", "polynomials", NULL};
     Py_ssize_t inv_rate, order, i;
     PyObject *obj, *seq = NULL;
     correct_convolutional_polynomial_t *poly = NULL;
@@ -145,10 +144,11 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
         PyErr_NoMemory();
         goto error;
     }
+
     for (i = 0; i < inv_rate; i++) {
         unsigned long value = PyLong_AsUnsignedLong(
             PySequence_Fast_GET_ITEM(seq, i));
-        if (value == (unsigned long) -1 && PyErr_Occurred())
+        if (value == -1 && PyErr_Occurred())
             goto error;
         if (value > UINT16_MAX) {
             PyErr_SetString(PyExc_OverflowError,
@@ -295,13 +295,13 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
                      self->inv_rate);
         return NULL;
     }
-    capacity = (Py_ssize_t)
-        (((size_t) encoded.len / self->inv_rate + 7) / 8);
+    capacity = (Py_ssize_t) (((size_t) encoded.len / self->inv_rate + 7) / 8);
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL) {
         PyBuffer_Release(&encoded);
         return NULL;
     }
+
     length = correct_convolutional_decode_soft(
         self->ctx, (const correct_convolutional_soft_t *) encoded.buf,
         (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
@@ -320,6 +320,7 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
     }
     if (_PyBytes_Resize(&res, (Py_ssize_t) length) < 0)
         return NULL;
+
     return res;
 }
 
@@ -331,7 +332,7 @@ static PyMethodDef conv_methods[] = {
      "decode(codeword) -> bytes\n\nDecode a big-endian bitarray."},
     {"decode_soft", (PyCFunction) conv_decode_soft, METH_O,
      "decode_soft(values) -> bytes\n\nDecode 8-bit soft-decision values."},
-    {NULL, NULL, 0, NULL}
+    {NULL}
 };
 
 
@@ -534,7 +535,7 @@ static PyMethodDef rs_methods[] = {
      "encode(data) -> bytes\n\nEncode one Reed-Solomon block."},
     {"decode", (PyCFunction) rs_decode, METH_VARARGS | METH_KEYWORDS,
      "decode(encoded, erasures=None) -> bytes\n\nDecode one Reed-Solomon block."},
-    {NULL, NULL, 0, NULL}
+    {NULL}
 };
 
 
