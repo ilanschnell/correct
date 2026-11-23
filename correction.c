@@ -571,6 +571,44 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
 }
 
 
+static int
+get_rs_block(RSObject *self, PyObject *obj, Py_buffer *encoded)
+{
+    if (get_buffer(obj, encoded) < 0)
+        return -1;
+    if ((size_t) encoded->len < self->num_roots || encoded->len > 255) {
+        PyBuffer_Release(encoded);
+        PyErr_Format(PyExc_ValueError, "encoded block length must be "
+                     "between %zu and 255", self->num_roots);
+        return -1;
+    }
+    return 0;
+}
+
+
+static ssize_t
+decode_rs_block(RSObject *self, const Py_buffer *encoded,
+                const uint8_t *locations, Py_ssize_t nerasures,
+                uint8_t *decoded)
+{
+    ssize_t length;
+
+    LOCK_CODEC(self);
+    if (nerasures) {
+        length = correct_reed_solomon_decode_with_erasures(
+            self->ctx, (const uint8_t *) encoded->buf,
+            (size_t) encoded->len, locations, (size_t) nerasures, decoded);
+    }
+    else {
+        length = correct_reed_solomon_decode(
+            self->ctx, (const uint8_t *) encoded->buf,
+            (size_t) encoded->len, decoded);
+    }
+    UNLOCK_CODEC(self);
+    return length;
+}
+
+
 static PyObject *
 rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -584,13 +622,8 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O:decode", kwlist,
                                      &obj, &erasures))
         return NULL;
-    if (get_buffer(obj, &encoded) < 0)
+    if (get_rs_block(self, obj, &encoded) < 0)
         return NULL;
-    if ((size_t) encoded.len < self->num_roots || encoded.len > 255) {
-        PyErr_Format(PyExc_ValueError, "encoded block length must be "
-                     "between %zu and 255", self->num_roots);
-        goto error;
-    }
 
     if (erasures != Py_None) {
         locations = alloc_erasure_locations(self->num_roots, encoded.len,
@@ -604,19 +637,8 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     if (res == NULL)
         goto error;
 
-    LOCK_CODEC(self);
-    if (nerasures) {
-        length = correct_reed_solomon_decode_with_erasures(
-            self->ctx, (const uint8_t *) encoded.buf,
-            (size_t) encoded.len, locations, (size_t) nerasures,
-            (uint8_t *) PyBytes_AS_STRING(res));
-    }
-    else {
-        length = correct_reed_solomon_decode(
-            self->ctx, (const uint8_t *) encoded.buf,
-            (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
-    }
-    UNLOCK_CODEC(self);
+    length = decode_rs_block(self, &encoded, locations, nerasures,
+                             (uint8_t *) PyBytes_AS_STRING(res));
 
     if (length < 0) {
         PyErr_SetString(PyExc_ValueError,
