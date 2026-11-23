@@ -467,6 +467,9 @@ typedef struct {
     PyObject_HEAD
     correct_reed_solomon *ctx;
     int num_roots;
+    unsigned int field_poly;
+    unsigned int first_root;
+    unsigned int root_gap;
 #ifdef Py_GIL_DISABLED
     PyMutex mutex;
 #endif
@@ -518,7 +521,20 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
         correct_reed_solomon_destroy(self->ctx);
     self->ctx = ctx;
     self->num_roots = num_roots;
+    self->field_poly = field_poly;
+    self->first_root = first_root;
+    self->root_gap = root_gap;
     return 0;
+}
+
+/* return a reconstructible representation of a Reed-Solomon codec */
+static PyObject *
+rs_repr(RSObject *self)
+{
+    return PyUnicode_FromFormat(
+        "correction.ReedSolomon(%d, field_poly=0x%x, "
+        "first_root=%u, root_gap=%u)",
+        self->num_roots, self->field_poly, self->first_root, self->root_gap);
 }
 
 /* encode one Reed-Solomon block */
@@ -721,6 +737,7 @@ static PyTypeObject RS_Type = {
     .tp_name = "correction.ReedSolomon",
     .tp_basicsize = sizeof(RSObject),
     .tp_dealloc = (destructor) rs_dealloc,
+    .tp_repr = (reprfunc) rs_repr,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ReedSolomon(num_roots, field_poly=0x11d, "
               "first_root=1, root_gap=1)",

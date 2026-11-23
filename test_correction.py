@@ -129,6 +129,18 @@ class ReedSolomonTests(unittest.TestCase):
     def setUp(self):
         self.rs = correction.ReedSolomon(32)
 
+    def test_repr(self):
+        self.assertEqual(
+            repr(self.rs),
+            "correction.ReedSolomon(32, field_poly=0x11d, "
+            "first_root=1, root_gap=1)")
+
+        rs = correction.ReedSolomon(16, 0x187, 2, 3)
+        self.assertEqual(
+            repr(rs),
+            "correction.ReedSolomon(16, field_poly=0x187, "
+            "first_root=2, root_gap=3)")
+
     def test_roundtrip(self):
         for msg in (b'', b'a', b'Hello world!', bytes(range(223))):
             encoded = self.rs.encode(msg)
