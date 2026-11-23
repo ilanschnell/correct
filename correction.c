@@ -174,8 +174,8 @@ alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
     }
 
     for (i = 0; i < inv_rate; i++) {
-        unsigned long value = PyLong_AsUnsignedLong(
-            PySequence_Fast_GET_ITEM(seq, i));
+        unsigned long value;
+        value = PyLong_AsUnsignedLong(PySequence_Fast_GET_ITEM(seq, i));
         if (value == (unsigned long) -1 && PyErr_Occurred())
             goto error;
         if (value > UINT16_MAX) {
@@ -446,15 +446,15 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
     static char *kwlist[] = {
         "num_roots", "primitive_polynomial", "first_root", "root_gap", NULL
     };
+    correct_reed_solomon *ctx;
     Py_ssize_t num_roots;
     unsigned int primitive = 0x11d, first_root = 1, root_gap = 1;
-    correct_reed_solomon *ctx;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "n|III:ReedSolomon",
                                      kwlist, &num_roots, &primitive,
                                      &first_root, &root_gap))
         return -1;
-    if (num_roots <= 0 || num_roots >= 255) {
+    if (num_roots < 1 || num_roots > 254) {
         PyErr_SetString(PyExc_ValueError,
                         "num_roots must be between 1 and 254");
         return -1;
@@ -494,8 +494,7 @@ rs_encode(RSObject *self, PyObject *obj)
         return NULL;
     if ((size_t) msg.len > 255 - self->num_roots) {
         PyBuffer_Release(&msg);
-        PyErr_Format(PyExc_ValueError,
-                     "message cannot exceed %zu bytes",
+        PyErr_Format(PyExc_ValueError, "message cannot exceed %zu bytes",
                      255 - self->num_roots);
         return NULL;
     }
@@ -527,7 +526,7 @@ static Py_ssize_t
 alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
                         PyObject *erasures, uint8_t **locations)
 {
-    uint8_t *locs = NULL;
+    uint8_t *locs = NULL;    /* locations array to be returned */
     PyObject *seq;
     Py_ssize_t nerasures, i;
 
@@ -576,6 +575,7 @@ get_rs_block(RSObject *self, PyObject *obj, Py_buffer *encoded)
 {
     if (get_buffer(obj, encoded) < 0)
         return -1;
+
     if ((size_t) encoded->len < self->num_roots || encoded->len > 255) {
         PyBuffer_Release(encoded);
         PyErr_Format(PyExc_ValueError, "encoded block length must be "
@@ -605,6 +605,7 @@ decode_rs_block(RSObject *self, const Py_buffer *encoded,
             (size_t) encoded->len, decoded);
     }
     UNLOCK_CODEC(self);
+
     return length;
 }
 
