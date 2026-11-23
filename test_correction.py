@@ -148,6 +148,7 @@ class ReedSolomonTests(unittest.TestCase):
 
     def test_buffers(self):
         encoded = self.rs.encode(bytearray(b'abc'))
+        self.assertEqual(self.rs.decode(encoded, []), b'abc')
         self.assertEqual(self.rs.decode(memoryview(encoded)), b'abc')
         with self.assertRaises(TypeError):
             self.rs.encode(array('H', [1, 2]))

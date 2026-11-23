@@ -541,14 +541,60 @@ rs_encode(RSObject *self, PyObject *obj)
 }
 
 
+static uint8_t *
+alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
+                        PyObject *erasures, Py_ssize_t *nerasures)
+{
+    uint8_t *locations = NULL;
+    PyObject *seq;
+    Py_ssize_t i;
+
+    seq = PySequence_Fast(erasures, "erasures must be a sequence");
+    if (seq == NULL)
+        return NULL;
+
+    *nerasures = PySequence_Fast_GET_SIZE(seq);
+    if ((size_t) *nerasures > num_roots) {
+        PyErr_SetString(PyExc_ValueError, "too many Reed-Solomon erasures");
+        goto error;
+    }
+    locations = PyMem_Malloc((size_t) (*nerasures ? *nerasures : 1));
+    if (locations == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
+
+    for (i = 0; i < *nerasures; i++) {
+        Py_ssize_t pos = PyLong_AsSsize_t(PySequence_Fast_GET_ITEM(seq, i));
+
+        if (pos == -1 && PyErr_Occurred())
+            goto error;
+
+        if (pos < 0 || pos >= len) {
+            PyErr_SetString(PyExc_ValueError,
+                            "erasure position is out of range");
+            goto error;
+        }
+        locations[i] = (uint8_t) pos;
+    }
+    Py_DECREF(seq);
+    return locations;
+
+ error:
+    PyMem_Free(locations);
+    Py_DECREF(seq);
+    return NULL;
+}
+
+
 static PyObject *
 rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {"encoded", "erasures", NULL};
-    PyObject *obj, *erasures = Py_None, *seq = NULL, *res = NULL;
+    PyObject *obj, *erasures = Py_None, *res = NULL;
     Py_buffer encoded;
     uint8_t *locations = NULL;
-    Py_ssize_t i, nerasures = 0, capacity;
+    Py_ssize_t nerasures = 0, capacity;
     ssize_t length;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O:decode", kwlist,
@@ -557,39 +603,16 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     if (get_buffer(obj, &encoded) < 0)
         return NULL;
     if ((size_t) encoded.len < self->num_roots || encoded.len > 255) {
-        PyErr_Format(PyExc_ValueError,
-                     "encoded block length must be between %zu and 255",
-                     self->num_roots);
+        PyErr_Format(PyExc_ValueError, "encoded block length must be "
+                     "between %zu and 255", self->num_roots);
         goto error;
     }
 
     if (erasures != Py_None) {
-        seq = PySequence_Fast(erasures, "erasures must be a sequence");
-        if (seq == NULL)
+        locations = alloc_erasure_locations(self->num_roots, encoded.len,
+                                            erasures, &nerasures);
+        if (locations == NULL)
             goto error;
-        nerasures = PySequence_Fast_GET_SIZE(seq);
-        if ((size_t) nerasures > self->num_roots) {
-            PyErr_SetString(PyExc_ValueError,
-                            "too many Reed-Solomon erasures");
-            goto error;
-        }
-        locations = PyMem_Malloc((size_t) nerasures);
-        if (locations == NULL && nerasures) {
-            PyErr_NoMemory();
-            goto error;
-        }
-        for (i = 0; i < nerasures; i++) {
-            Py_ssize_t pos = PyLong_AsSsize_t(
-                PySequence_Fast_GET_ITEM(seq, i));
-            if (pos == -1 && PyErr_Occurred())
-                goto error;
-            if (pos < 0 || pos >= encoded.len) {
-                PyErr_SetString(PyExc_ValueError,
-                                "erasure position is out of range");
-                goto error;
-            }
-            locations[i] = (uint8_t) pos;
-        }
     }
 
     capacity = encoded.len - (Py_ssize_t) self->num_roots;
@@ -626,13 +649,11 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
 
     PyBuffer_Release(&encoded);
     PyMem_Free(locations);
-    Py_XDECREF(seq);
     return res;
 
 error:
     PyBuffer_Release(&encoded);
     PyMem_Free(locations);
-    Py_XDECREF(seq);
     Py_XDECREF(res);
     return NULL;
 }
