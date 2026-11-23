@@ -21,7 +21,7 @@ static PyMutex conv_create_mutex;
 #define UNLOCK_CODEC(obj)
 #endif
 
-
+/* acquire a contiguous read-only buffer with one-byte elements */
 static int
 get_buffer(PyObject *obj, Py_buffer *view)
 {
@@ -36,7 +36,7 @@ get_buffer(PyObject *obj, Py_buffer *view)
     return 0;
 }
 
-
+/* create a big-endian bitarray containing the requested number of bits */
 static PyObject *
 bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
 {
@@ -64,6 +64,7 @@ bitarray_from_bytes(PyObject *data, Py_ssize_t nbits)
 
 /* -------------------------  Convolutional codes  ----------------------- */
 
+/* acquire a big-endian bitarray as a convolutional codeword */
 static int
 get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
 {
@@ -107,7 +108,7 @@ typedef struct {
 #endif
 } ConvObject;
 
-
+/* release resources owned by a convolutional codec */
 static void
 conv_dealloc(ConvObject *self)
 {
@@ -116,7 +117,7 @@ conv_dealloc(ConvObject *self)
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-
+/* allocate the recommended polynomials for a supported configuration */
 static correct_convolutional_polynomial_t *
 alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
 {
@@ -145,7 +146,7 @@ alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
     return poly;
 }
 
-
+/* convert and allocate a user-supplied polynomial sequence */
 static correct_convolutional_polynomial_t *
 alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
 {
@@ -193,7 +194,7 @@ alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
     return NULL;
 }
 
-
+/* create a convolutional context under the global lock when necessary */
 static correct_convolutional *
 create_conv_context(size_t inv_rate, size_t order,
                     correct_convolutional_polynomial_t *poly)
@@ -210,7 +211,7 @@ create_conv_context(size_t inv_rate, size_t order,
     return ctx;
 }
 
-
+/* initialize or reinitialize a convolutional codec */
 static int
 conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -256,7 +257,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     return 0;
 }
 
-
+/* encode a message as a convolutional codeword */
 static PyObject *
 conv_encode(ConvObject *self, PyObject *obj)
 {
@@ -303,7 +304,7 @@ conv_encode(ConvObject *self, PyObject *obj)
     return res;
 }
 
-
+/* decode hard- or soft-decision convolutional symbols */
 static PyObject *
 conv_decode_impl(ConvObject *self, const Py_buffer *encoded,
                  Py_ssize_t nsymbols, int soft)
@@ -365,7 +366,7 @@ conv_decode_impl(ConvObject *self, const Py_buffer *encoded,
     return res;
 }
 
-
+/* decode a hard-decision convolutional codeword */
 static PyObject *
 conv_decode(ConvObject *self, PyObject *obj)
 {
@@ -380,7 +381,7 @@ conv_decode(ConvObject *self, PyObject *obj)
     return res;
 }
 
-
+/* decode soft-decision convolutional symbols */
 static PyObject *
 conv_decode_soft(ConvObject *self, PyObject *obj)
 {
@@ -429,7 +430,7 @@ typedef struct {
 #endif
 } RSObject;
 
-
+/* release resources owned by a Reed-Solomon codec */
 static void
 rs_dealloc(RSObject *self)
 {
@@ -438,7 +439,7 @@ rs_dealloc(RSObject *self)
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-
+/* initialize or reinitialize a Reed-Solomon codec */
 static int
 rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -480,7 +481,7 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
     return 0;
 }
 
-
+/* encode one Reed-Solomon block */
 static PyObject *
 rs_encode(RSObject *self, PyObject *obj)
 {
@@ -521,7 +522,7 @@ rs_encode(RSObject *self, PyObject *obj)
     return res;
 }
 
-
+/* convert and allocate a sequence of Reed-Solomon erasure locations */
 static Py_ssize_t
 alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
                         PyObject *erasures, uint8_t **locations)
@@ -569,7 +570,7 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
     return -1;
 }
 
-
+/* acquire and validate an encoded Reed-Solomon block */
 static int
 get_rs_block(RSObject *self, PyObject *obj, Py_buffer *encoded)
 {
@@ -584,7 +585,7 @@ get_rs_block(RSObject *self, PyObject *obj, Py_buffer *encoded)
     return 0;
 }
 
-
+/* decode a Reed-Solomon block, optionally using erasure locations */
 static ssize_t
 decode_rs_block(RSObject *self, const Py_buffer *encoded,
                 const uint8_t *locations, Py_ssize_t nerasures,
@@ -607,7 +608,7 @@ decode_rs_block(RSObject *self, const Py_buffer *encoded,
     return length;
 }
 
-
+/* decode one Reed-Solomon block */
 static PyObject *
 rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
 {
