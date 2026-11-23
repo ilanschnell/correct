@@ -424,7 +424,7 @@ static PyTypeObject Conv_Type = {
 typedef struct {
     PyObject_HEAD
     correct_reed_solomon *ctx;
-    size_t num_roots;
+    int num_roots;
 #ifdef Py_GIL_DISABLED
     PyMutex mutex;
 #endif
@@ -447,10 +447,10 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
         "num_roots", "primitive_polynomial", "first_root", "root_gap", NULL
     };
     correct_reed_solomon *ctx;
-    Py_ssize_t num_roots;
+    int num_roots;
     unsigned int primitive = 0x11d, first_root = 1, root_gap = 1;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "n|III:ReedSolomon",
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|III:ReedSolomon",
                                      kwlist, &num_roots, &primitive,
                                      &first_root, &root_gap))
         return -1;
@@ -466,10 +466,8 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
         return -1;
     }
 
-    ctx = correct_reed_solomon_create((uint16_t) primitive,
-                                      (uint8_t) first_root,
-                                      (uint8_t) root_gap,
-                                      (size_t) num_roots);
+    ctx = correct_reed_solomon_create(primitive, first_root, root_gap,
+                                      num_roots);
     if (ctx == NULL) {
         PyErr_NoMemory();
         return -1;
@@ -477,7 +475,7 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
     if (self->ctx)
         correct_reed_solomon_destroy(self->ctx);
     self->ctx = ctx;
-    self->num_roots = (size_t) num_roots;
+    self->num_roots = num_roots;
     return 0;
 }
 
@@ -494,11 +492,11 @@ rs_encode(RSObject *self, PyObject *obj)
         return NULL;
     if ((size_t) msg.len > 255 - self->num_roots) {
         PyBuffer_Release(&msg);
-        PyErr_Format(PyExc_ValueError, "message cannot exceed %zu bytes",
+        PyErr_Format(PyExc_ValueError, "message cannot exceed %d bytes",
                      255 - self->num_roots);
         return NULL;
     }
-    length = msg.len + (Py_ssize_t) self->num_roots;
+    length = msg.len + self->num_roots;
     res = PyBytes_FromStringAndSize(NULL, length);
     if (res == NULL) {
         PyBuffer_Release(&msg);
@@ -522,8 +520,8 @@ rs_encode(RSObject *self, PyObject *obj)
 }
 
 /* convert and allocate a sequence of Reed-Solomon erasure locations */
-static Py_ssize_t
-alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
+static int
+alloc_erasure_locations(int num_roots, Py_ssize_t len,
                         PyObject *erasures, uint8_t **locations)
 {
     uint8_t *locs = NULL;    /* locations array to be returned */
@@ -535,7 +533,7 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
         return -1;
 
     nerasures = PySequence_Fast_GET_SIZE(seq);
-    if ((size_t) nerasures > num_roots) {
+    if (nerasures > num_roots) {
         PyErr_SetString(PyExc_ValueError, "too many Reed-Solomon erasures");
         goto error;
     }
@@ -561,7 +559,7 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
     }
     Py_DECREF(seq);
     *locations = locs;
-    return nerasures;
+    return (int) nerasures;
 
  error:
     PyMem_Free(locs);
@@ -576,10 +574,10 @@ get_rs_block(RSObject *self, PyObject *obj, Py_buffer *encoded)
     if (get_buffer(obj, encoded) < 0)
         return -1;
 
-    if ((size_t) encoded->len < self->num_roots || encoded->len > 255) {
+    if (encoded->len < self->num_roots || encoded->len > 255) {
         PyBuffer_Release(encoded);
         PyErr_Format(PyExc_ValueError, "encoded block length must be "
-                     "between %zu and 255", self->num_roots);
+                     "between %d and 255", self->num_roots);
         return -1;
     }
     return 0;
@@ -617,7 +615,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     PyObject *obj, *erasures = Py_None, *res = NULL;
     Py_buffer encoded;
     uint8_t *locations = NULL;
-    Py_ssize_t nerasures = 0, capacity;
+    int nerasures = 0, capacity;
     ssize_t length;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O:decode", kwlist,
@@ -633,7 +631,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
             goto error;
     }
 
-    capacity = encoded.len - (Py_ssize_t) self->num_roots;
+    capacity = encoded.len - self->num_roots;
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL)
         goto error;
