@@ -158,9 +158,8 @@ alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
         return NULL;
 
     if (PySequence_Fast_GET_SIZE(seq) != inv_rate) {
-        PyErr_Format(PyExc_ValueError,
-                     "expected %zd polynomials, got %zd", inv_rate,
-                     PySequence_Fast_GET_SIZE(seq));
+        PyErr_Format(PyExc_ValueError, "expected %zd polynomials, got %zd",
+                     inv_rate, PySequence_Fast_GET_SIZE(seq));
         goto error;
     }
     if ((size_t) inv_rate > SIZE_MAX / sizeof(*poly)) {
@@ -274,11 +273,13 @@ conv_encode(ConvObject *self, PyObject *obj)
         PyBuffer_Release(&msg);
         return NULL;
     }
+
     LOCK_CODEC(self);
     actual = correct_convolutional_encode(
         self->ctx, (const uint8_t *) msg.buf, (size_t) msg.len,
         (uint8_t *) PyBytes_AS_STRING(data));
     UNLOCK_CODEC(self);
+
     PyBuffer_Release(&msg);
     assert(actual == nbits);
     if (actual > nbytes * 8) {
@@ -327,11 +328,13 @@ conv_decode(ConvObject *self, PyObject *obj)
         PyBuffer_Release(&encoded);
         return NULL;
     }
+
     LOCK_CODEC(self);
     length = correct_convolutional_decode(
         self->ctx, (const uint8_t *) encoded.buf, (size_t) nbits,
         (uint8_t *) PyBytes_AS_STRING(res));
     UNLOCK_CODEC(self);
+
     PyBuffer_Release(&encoded);
     if (length < 0) {
         Py_DECREF(res);
@@ -390,6 +393,7 @@ conv_decode_soft(ConvObject *self, PyObject *obj)
         self->ctx, (const correct_convolutional_soft_t *) encoded.buf,
         (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
     UNLOCK_CODEC(self);
+
     PyBuffer_Release(&encoded);
     if (length < 0) {
         Py_DECREF(res);
@@ -519,11 +523,13 @@ rs_encode(RSObject *self, PyObject *obj)
         PyBuffer_Release(&msg);
         return NULL;
     }
+
     LOCK_CODEC(self);
     status = correct_reed_solomon_encode(
         self->ctx, (const uint8_t *) msg.buf, (size_t) msg.len,
         (uint8_t *) PyBytes_AS_STRING(res));
     UNLOCK_CODEC(self);
+
     PyBuffer_Release(&msg);
     if (status < 0) {
         Py_DECREF(res);
@@ -590,6 +596,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
     res = PyBytes_FromStringAndSize(NULL, capacity);
     if (res == NULL)
         goto error;
+
     LOCK_CODEC(self);
     if (nerasures) {
         length = correct_reed_solomon_decode_with_erasures(
@@ -603,6 +610,7 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
             (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
     }
     UNLOCK_CODEC(self);
+
     if (length < 0) {
         PyErr_SetString(PyExc_ValueError,
                         "could not decode Reed-Solomon block");
