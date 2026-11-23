@@ -26,6 +26,15 @@ CONV_CODES = [
 
 class ConvolutionalTests(unittest.TestCase):
 
+    def test_repr(self):
+        conv = correction.Convolutional(2, 7)
+        self.assertEqual(repr(conv),
+                         "correction.Convolutional(2, 7, (113, 87))")
+
+        conv = correction.Convolutional(2, 5, (0o35, 0o23))
+        self.assertEqual(repr(conv),
+                         "correction.Convolutional(2, 5, (29, 19))")
+
     def test_roundtrip(self):
         for inv_rate, order, polynomials in CONV_CODES:
             conv = correction.Convolutional(inv_rate, order, polynomials)
