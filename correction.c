@@ -194,6 +194,23 @@ alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
 }
 
 
+static correct_convolutional *
+create_conv_context(size_t inv_rate, size_t order,
+                    correct_convolutional_polynomial_t *poly)
+{
+    correct_convolutional *ctx;
+
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&conv_create_mutex);
+#endif
+    ctx = correct_convolutional_create(inv_rate, order, poly);
+#ifdef Py_GIL_DISABLED
+    PyMutex_Unlock(&conv_create_mutex);
+#endif
+    return ctx;
+}
+
+
 static int
 conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -224,15 +241,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     if (poly == NULL)
         return -1;
 
-#ifdef Py_GIL_DISABLED
-    PyMutex_Lock(&conv_create_mutex);
-#endif
-    ctx = correct_convolutional_create((size_t) inv_rate, (size_t) order,
-                                       poly);
-#ifdef Py_GIL_DISABLED
-    PyMutex_Unlock(&conv_create_mutex);
-#endif
-
+    ctx = create_conv_context((size_t) inv_rate, (size_t) order, poly);
     PyMem_Free(poly);
     if (ctx == NULL) {
         PyErr_NoMemory();
@@ -666,6 +675,18 @@ static struct PyModuleDef moduledef = {
 };
 
 
+static int
+add_type(PyObject *module, const char *name, PyTypeObject *type)
+{
+    Py_INCREF(type);
+    if (PyModule_AddObject(module, name, (PyObject *) type) < 0) {
+        Py_DECREF(type);
+        return -1;
+    }
+    return 0;
+}
+
+
 PyMODINIT_FUNC
 PyInit_correction(void)
 {
@@ -700,18 +721,9 @@ PyInit_correction(void)
         goto error;
 #endif
 
-    Py_INCREF(&Conv_Type);
-    if (PyModule_AddObject(module, "Convolutional",
-                           (PyObject *) &Conv_Type) < 0) {
-        Py_DECREF(&Conv_Type);
+    if (add_type(module, "Convolutional", &Conv_Type) < 0 ||
+        add_type(module, "ReedSolomon", &RS_Type) < 0)
         goto error;
-    }
-    Py_INCREF(&RS_Type);
-    if (PyModule_AddObject(module, "ReedSolomon",
-                           (PyObject *) &RS_Type) < 0) {
-        Py_DECREF(&RS_Type);
-        goto error;
-    }
     return module;
 
  error:
