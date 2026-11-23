@@ -135,13 +135,62 @@ get_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
 }
 
 
+static correct_convolutional_polynomial_t *
+get_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
+{
+    correct_convolutional_polynomial_t *poly = NULL;
+    PyObject *seq;
+    Py_ssize_t i;
+
+    seq = PySequence_Fast(obj, "polynomials must be a sequence");
+    if (seq == NULL)
+        return NULL;
+
+    if (PySequence_Fast_GET_SIZE(seq) != inv_rate) {
+        PyErr_Format(PyExc_ValueError,
+                     "expected %zd polynomials, got %zd", inv_rate,
+                     PySequence_Fast_GET_SIZE(seq));
+        goto error;
+    }
+    if ((size_t) inv_rate > SIZE_MAX / sizeof(*poly)) {
+        PyErr_NoMemory();
+        goto error;
+    }
+    poly = PyMem_Malloc((size_t) inv_rate * sizeof(*poly));
+    if (poly == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
+
+    for (i = 0; i < inv_rate; i++) {
+        unsigned long value = PyLong_AsUnsignedLong(
+            PySequence_Fast_GET_ITEM(seq, i));
+        if (value == (unsigned long) -1 && PyErr_Occurred())
+            goto error;
+        if (value > UINT16_MAX) {
+            PyErr_SetString(PyExc_OverflowError, "convolutional "
+                            "polynomial does not fit in 16 bits");
+            goto error;
+        }
+        poly[i] = (correct_convolutional_polynomial_t) value;
+    }
+    Py_DECREF(seq);
+    return poly;
+
+ error:
+    PyMem_Free(poly);
+    Py_DECREF(seq);
+    return NULL;
+}
+
+
 static int
 conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {"inv_rate", "order", "polynomials", NULL};
-    Py_ssize_t inv_rate, order, i;
-    PyObject *obj = Py_None, *seq = NULL;
-    const correct_convolutional_polynomial_t *poly;
+    Py_ssize_t inv_rate, order;
+    PyObject *obj = Py_None;
+    const correct_convolutional_polynomial_t *poly = NULL;
     correct_convolutional_polynomial_t *custom_poly = NULL;
     correct_convolutional *ctx = NULL;
 
@@ -159,42 +208,13 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 
     if (obj == Py_None) {
         poly = get_default_polynomials(inv_rate, order);
-        if (poly == NULL)
-            return -1;
     }
     else {
-        seq = PySequence_Fast(obj, "polynomials must be a sequence");
-        if (seq == NULL)
-            return -1;
-        if (PySequence_Fast_GET_SIZE(seq) != inv_rate) {
-            PyErr_Format(PyExc_ValueError,
-                         "expected %zd polynomials, got %zd", inv_rate,
-                         PySequence_Fast_GET_SIZE(seq));
-            goto error;
-        }
-        if ((size_t) inv_rate > SIZE_MAX / sizeof(*custom_poly)) {
-            PyErr_NoMemory();
-            goto error;
-        }
-        custom_poly = PyMem_Malloc((size_t) inv_rate * sizeof(*custom_poly));
-        if (custom_poly == NULL) {
-            PyErr_NoMemory();
-            goto error;
-        }
-        for (i = 0; i < inv_rate; i++) {
-            unsigned long value = PyLong_AsUnsignedLong(
-                PySequence_Fast_GET_ITEM(seq, i));
-            if (value == (unsigned long) -1 && PyErr_Occurred())
-                goto error;
-            if (value > UINT16_MAX) {
-                PyErr_SetString(PyExc_OverflowError, "convolutional "
-                                "polynomial does not fit in 16 bits");
-                goto error;
-            }
-            custom_poly[i] = (correct_convolutional_polynomial_t) value;
-        }
+        custom_poly = get_custom_polynomials(inv_rate, obj);
         poly = custom_poly;
     }
+    if (poly == NULL)
+        return -1;
 
 #ifdef Py_GIL_DISABLED
     PyMutex_Lock(&conv_create_mutex);
@@ -204,9 +224,11 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 #ifdef Py_GIL_DISABLED
     PyMutex_Unlock(&conv_create_mutex);
 #endif
+
+    PyMem_Free(custom_poly);
     if (ctx == NULL) {
         PyErr_NoMemory();
-        goto error;
+        return -1;
     }
 
     if (self->ctx != NULL)
@@ -214,14 +236,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     self->ctx = ctx;
     self->inv_rate = (size_t) inv_rate;
     self->order = (size_t) order;
-    PyMem_Free(custom_poly);
-    Py_XDECREF(seq);
     return 0;
-
-error:
-    PyMem_Free(custom_poly);
-    Py_XDECREF(seq);
-    return -1;
 }
 
 
