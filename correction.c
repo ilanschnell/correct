@@ -547,24 +547,26 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
 {
     uint8_t *locations = NULL;
     PyObject *seq;
+    Py_ssize_t n;               /* number of erasures */
     Py_ssize_t i;
 
     seq = PySequence_Fast(erasures, "erasures must be a sequence");
     if (seq == NULL)
         return NULL;
 
-    *nerasures = PySequence_Fast_GET_SIZE(seq);
-    if ((size_t) *nerasures > num_roots) {
+    n = PySequence_Fast_GET_SIZE(seq);
+    if ((size_t) n > num_roots) {
         PyErr_SetString(PyExc_ValueError, "too many Reed-Solomon erasures");
         goto error;
     }
-    locations = PyMem_Malloc((size_t) (*nerasures ? *nerasures : 1));
+    /* allocate at least one byte so NULL unambiguously indicates failure */
+    locations = PyMem_Malloc((size_t) Py_MAX(n, 1));
     if (locations == NULL) {
         PyErr_NoMemory();
         goto error;
     }
 
-    for (i = 0; i < *nerasures; i++) {
+    for (i = 0; i < n; i++) {
         Py_ssize_t pos = PyLong_AsSsize_t(PySequence_Fast_GET_ITEM(seq, i));
 
         if (pos == -1 && PyErr_Occurred())
@@ -578,6 +580,7 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
         locations[i] = (uint8_t) pos;
     }
     Py_DECREF(seq);
+    *nerasures = n;
     return locations;
 
  error:
