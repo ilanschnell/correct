@@ -116,8 +116,8 @@ conv_dealloc(ConvObject *self)
 }
 
 
-static const correct_convolutional_polynomial_t *
-get_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
+static correct_convolutional_polynomial_t *
+alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
 {
     static const correct_convolutional_polynomial_t *const defaults[2][4] = {
         {correct_conv_r12_6_polynomial, correct_conv_r12_7_polynomial,
@@ -125,18 +125,30 @@ get_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
         {correct_conv_r13_6_polynomial, correct_conv_r13_7_polynomial,
          correct_conv_r13_8_polynomial, correct_conv_r13_9_polynomial},
     };
+    correct_convolutional_polynomial_t *poly;
+    const correct_convolutional_polynomial_t *src;
+    Py_ssize_t i;
 
     if (inv_rate < 2 || inv_rate > 3 || order < 6 || order > 9) {
         PyErr_Format(PyExc_ValueError, "polynomials must be specified "
                      "for inv_rate %zd and order %zd", inv_rate, order);
         return NULL;
     }
-    return defaults[inv_rate - 2][order - 6];
+
+    poly = PyMem_Malloc((size_t) inv_rate * sizeof(*poly));
+    if (poly == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    src = defaults[inv_rate - 2][order - 6];
+    for (i = 0; i < inv_rate; i++)
+        poly[i] = src[i];
+    return poly;
 }
 
 
 static correct_convolutional_polynomial_t *
-get_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
+alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
 {
     correct_convolutional_polynomial_t *poly = NULL;
     PyObject *seq;
@@ -190,8 +202,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     static char *kwlist[] = {"inv_rate", "order", "polynomials", NULL};
     Py_ssize_t inv_rate, order;
     PyObject *obj = Py_None;
-    const correct_convolutional_polynomial_t *poly = NULL;
-    correct_convolutional_polynomial_t *custom_poly = NULL;
+    correct_convolutional_polynomial_t *poly;
     correct_convolutional *ctx = NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "nn|O:Convolutional",
@@ -207,11 +218,10 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     }
 
     if (obj == Py_None) {
-        poly = get_default_polynomials(inv_rate, order);
+        poly = alloc_default_polynomials(inv_rate, order);
     }
     else {
-        custom_poly = get_custom_polynomials(inv_rate, obj);
-        poly = custom_poly;
+        poly = alloc_custom_polynomials(inv_rate, obj);
     }
     if (poly == NULL)
         return -1;
@@ -225,7 +235,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     PyMutex_Unlock(&conv_create_mutex);
 #endif
 
-    PyMem_Free(custom_poly);
+    PyMem_Free(poly);
     if (ctx == NULL) {
         PyErr_NoMemory();
         return -1;
