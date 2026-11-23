@@ -126,8 +126,11 @@ get_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
          correct_conv_r13_8_polynomial, correct_conv_r13_9_polynomial},
     };
 
-    if (inv_rate < 2 || inv_rate > 3 || order < 6 || order > 9)
+    if (inv_rate < 2 || inv_rate > 3 || order < 6 || order > 9) {
+        PyErr_Format(PyExc_ValueError, "polynomials must be specified "
+                     "for inv_rate %zd and order %zd", inv_rate, order);
         return NULL;
+    }
     return defaults[inv_rate - 2][order - 6];
 }
 
@@ -156,11 +159,8 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 
     if (obj == Py_None) {
         poly = get_default_polynomials(inv_rate, order);
-        if (poly == NULL) {
-            PyErr_Format(PyExc_ValueError, "polynomials must be specified "
-                         "for inv_rate %zd and order %zd", inv_rate, order);
+        if (poly == NULL)
             return -1;
-        }
     }
     else {
         seq = PySequence_Fast(obj, "polynomials must be a sequence");
