@@ -111,7 +111,7 @@ typedef struct {
 static void
 conv_dealloc(ConvObject *self)
 {
-    if (self->ctx != NULL)
+    if (self->ctx)
         correct_convolutional_destroy(self->ctx);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
@@ -239,7 +239,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
         return -1;
     }
 
-    if (self->ctx != NULL)
+    if (self->ctx)
         correct_convolutional_destroy(self->ctx);
     self->ctx = ctx;
     self->inv_rate = (size_t) inv_rate;
@@ -296,50 +296,53 @@ conv_encode(ConvObject *self, PyObject *obj)
 
 
 static PyObject *
-conv_decode(ConvObject *self, PyObject *obj)
+conv_decode_impl(ConvObject *self, const Py_buffer *encoded,
+                 Py_ssize_t nsymbols, int soft)
 {
-    Py_buffer encoded;
     PyObject *res;
-    Py_ssize_t nbits, capacity, expected;
+    Py_ssize_t capacity, expected;
     size_t decoded_bits;
     ssize_t length;
 
-    if (get_codeword(obj, &encoded, &nbits) < 0)
-        return NULL;
-    if ((size_t) nbits % self->inv_rate) {
-        PyBuffer_Release(&encoded);
+    if ((size_t) nsymbols % self->inv_rate) {
         PyErr_Format(PyExc_ValueError,
-                     "codeword length must be divisible by %zu",
+                     "%s must be divisible by %zu",
+                     soft ? "number of soft symbols" : "codeword length",
                      self->inv_rate);
         return NULL;
     }
-    decoded_bits = (size_t) nbits / self->inv_rate;
+    decoded_bits = (size_t) nsymbols / self->inv_rate;
     if (decoded_bits < self->order + 1 ||
         (decoded_bits - self->order - 1) % 8) {
-        PyBuffer_Release(&encoded);
-        PyErr_SetString(PyExc_ValueError,
-                        "invalid convolutional codeword length");
+        PyErr_Format(PyExc_ValueError,
+                     "invalid convolutional %s length",
+                     soft ? "soft-symbol" : "codeword");
         return NULL;
     }
     expected = (Py_ssize_t) ((decoded_bits - self->order - 1) / 8);
     capacity = (Py_ssize_t) ((decoded_bits + 7) / 8);
     res = PyBytes_FromStringAndSize(NULL, capacity);
-    if (res == NULL) {
-        PyBuffer_Release(&encoded);
+    if (res == NULL)
         return NULL;
-    }
 
     LOCK_CODEC(self);
-    length = correct_convolutional_decode(
-        self->ctx, (const uint8_t *) encoded.buf, (size_t) nbits,
-        (uint8_t *) PyBytes_AS_STRING(res));
+    if (soft) {
+        length = correct_convolutional_decode_soft(
+            self->ctx,
+            (const correct_convolutional_soft_t *) encoded->buf,
+            (size_t) nsymbols, (uint8_t *) PyBytes_AS_STRING(res));
+    }
+    else {
+        length = correct_convolutional_decode(
+            self->ctx, (const uint8_t *) encoded->buf,
+            (size_t) nsymbols, (uint8_t *) PyBytes_AS_STRING(res));
+    }
     UNLOCK_CODEC(self);
 
-    PyBuffer_Release(&encoded);
     if (length < 0) {
         Py_DECREF(res);
-        PyErr_SetString(PyExc_ValueError,
-                        "could not decode convolutional codeword");
+        PyErr_Format(PyExc_ValueError, "could not decode convolutional %s",
+                     soft ? "soft symbols" : "codeword");
         return NULL;
     }
     if (length < expected || length > capacity) {
@@ -355,61 +358,30 @@ conv_decode(ConvObject *self, PyObject *obj)
 
 
 static PyObject *
+conv_decode(ConvObject *self, PyObject *obj)
+{
+    Py_buffer encoded;
+    PyObject *res;
+    Py_ssize_t nbits;
+
+    if (get_codeword(obj, &encoded, &nbits) < 0)
+        return NULL;
+    res = conv_decode_impl(self, &encoded, nbits, 0);
+    PyBuffer_Release(&encoded);
+    return res;
+}
+
+
+static PyObject *
 conv_decode_soft(ConvObject *self, PyObject *obj)
 {
     Py_buffer encoded;
     PyObject *res;
-    Py_ssize_t capacity, expected;
-    size_t decoded_bits;
-    ssize_t length;
 
     if (get_buffer(obj, &encoded) < 0)
         return NULL;
-    if ((size_t) encoded.len % self->inv_rate) {
-        PyBuffer_Release(&encoded);
-        PyErr_Format(PyExc_ValueError,
-                     "number of soft symbols must be divisible by %zu",
-                     self->inv_rate);
-        return NULL;
-    }
-    decoded_bits = (size_t) encoded.len / self->inv_rate;
-    if (decoded_bits < self->order + 1 ||
-        (decoded_bits - self->order - 1) % 8) {
-        PyBuffer_Release(&encoded);
-        PyErr_SetString(PyExc_ValueError,
-                        "invalid convolutional soft-symbol length");
-        return NULL;
-    }
-    expected = (Py_ssize_t) ((decoded_bits - self->order - 1) / 8);
-    capacity = (Py_ssize_t) ((decoded_bits + 7) / 8);
-    res = PyBytes_FromStringAndSize(NULL, capacity);
-    if (res == NULL) {
-        PyBuffer_Release(&encoded);
-        return NULL;
-    }
-
-    LOCK_CODEC(self);
-    length = correct_convolutional_decode_soft(
-        self->ctx, (const correct_convolutional_soft_t *) encoded.buf,
-        (size_t) encoded.len, (uint8_t *) PyBytes_AS_STRING(res));
-    UNLOCK_CODEC(self);
-
+    res = conv_decode_impl(self, &encoded, encoded.len, 1);
     PyBuffer_Release(&encoded);
-    if (length < 0) {
-        Py_DECREF(res);
-        PyErr_SetString(PyExc_ValueError,
-                        "could not decode convolutional soft symbols");
-        return NULL;
-    }
-    if (length < expected || length > capacity) {
-        Py_DECREF(res);
-        PyErr_SetString(PyExc_RuntimeError,
-                        "convolutional decoder returned an invalid length");
-        return NULL;
-    }
-    if (_PyBytes_Resize(&res, expected) < 0)
-        return NULL;
-
     return res;
 }
 
@@ -452,7 +424,7 @@ typedef struct {
 static void
 rs_dealloc(RSObject *self)
 {
-    if (self->ctx != NULL)
+    if (self->ctx)
         correct_reed_solomon_destroy(self->ctx);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
@@ -492,7 +464,7 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
         PyErr_NoMemory();
         return -1;
     }
-    if (self->ctx != NULL)
+    if (self->ctx)
         correct_reed_solomon_destroy(self->ctx);
     self->ctx = ctx;
     self->num_roots = (size_t) num_roots;
