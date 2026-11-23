@@ -101,8 +101,8 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
 typedef struct {
     PyObject_HEAD
     correct_convolutional *ctx;
-    size_t inv_rate;
-    size_t order;
+    int inv_rate;
+    int order;
 #ifdef Py_GIL_DISABLED
     PyMutex mutex;
 #endif
@@ -119,7 +119,7 @@ conv_dealloc(ConvObject *self)
 
 /* allocate the recommended polynomials for a supported configuration */
 static correct_convolutional_polynomial_t *
-alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
+alloc_default_polynomials(int inv_rate, int order)
 {
     static const correct_convolutional_polynomial_t *const defaults[2][4] = {
         {correct_conv_r12_6_polynomial, correct_conv_r12_7_polynomial,
@@ -132,11 +132,11 @@ alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
 
     if (inv_rate < 2 || inv_rate > 3 || order < 6 || order > 9) {
         PyErr_Format(PyExc_ValueError, "polynomials must be specified "
-                     "for inv_rate %zd and order %zd", inv_rate, order);
+                     "for inv_rate %d and order %d", inv_rate, order);
         return NULL;
     }
 
-    nbytes = (size_t) inv_rate * sizeof(*poly);
+    nbytes = inv_rate * sizeof(*poly);
     poly = PyMem_Malloc(nbytes);
     if (poly == NULL) {
         PyErr_NoMemory();
@@ -148,18 +148,18 @@ alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
 
 /* convert and allocate a user-supplied polynomial sequence */
 static correct_convolutional_polynomial_t *
-alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
+alloc_custom_polynomials(int inv_rate, PyObject *obj)
 {
     correct_convolutional_polynomial_t *poly = NULL;
     PyObject *seq;
-    Py_ssize_t i;
+    int i;
 
     seq = PySequence_Fast(obj, "polynomials must be a sequence");
     if (seq == NULL)
         return NULL;
 
     if (PySequence_Fast_GET_SIZE(seq) != inv_rate) {
-        PyErr_Format(PyExc_ValueError, "expected %zd polynomials, got %zd",
+        PyErr_Format(PyExc_ValueError, "expected %d polynomials, got %zd",
                      inv_rate, PySequence_Fast_GET_SIZE(seq));
         goto error;
     }
@@ -196,7 +196,7 @@ alloc_custom_polynomials(Py_ssize_t inv_rate, PyObject *obj)
 
 /* create a convolutional context under the global lock when necessary */
 static correct_convolutional *
-create_conv_context(size_t inv_rate, size_t order,
+create_conv_context(int inv_rate, int order,
                     correct_convolutional_polynomial_t *poly)
 {
     correct_convolutional *ctx;
@@ -216,12 +216,12 @@ static int
 conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {"inv_rate", "order", "polynomials", NULL};
-    Py_ssize_t inv_rate, order;
     PyObject *obj = Py_None;
     correct_convolutional_polynomial_t *poly;
     correct_convolutional *ctx = NULL;
+    int inv_rate, order;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "nn|O:Convolutional",
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ii|O:Convolutional",
                                      kwlist, &inv_rate, &order, &obj))
         return -1;
     if (inv_rate < 2) {
@@ -242,7 +242,7 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     if (poly == NULL)
         return -1;
 
-    ctx = create_conv_context((size_t) inv_rate, (size_t) order, poly);
+    ctx = create_conv_context(inv_rate, order, poly);
     PyMem_Free(poly);
     if (ctx == NULL) {
         PyErr_NoMemory();
@@ -252,8 +252,8 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     if (self->ctx)
         correct_convolutional_destroy(self->ctx);
     self->ctx = ctx;
-    self->inv_rate = (size_t) inv_rate;
-    self->order = (size_t) order;
+    self->inv_rate = inv_rate;
+    self->order = order;
     return 0;
 }
 
@@ -316,7 +316,7 @@ conv_decode_impl(ConvObject *self, const Py_buffer *encoded,
 
     if ((size_t) nsymbols % self->inv_rate) {
         PyErr_Format(PyExc_ValueError,
-                     "%s must be divisible by %zu",
+                     "%s must be divisible by %d",
                      soft ? "number of soft symbols" : "codeword length",
                      self->inv_rate);
         return NULL;
