@@ -1,5 +1,6 @@
 2026-11-XX  0.4.1:
 ------------------
+  * rename the ReedSolomon primitive_polynomial argument to field_poly
 
 
 2026-11-23  0.4.0:

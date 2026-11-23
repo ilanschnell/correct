@@ -175,7 +175,7 @@ class ReedSolomonTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 correction.ReedSolomon(num_roots)
         with self.assertRaises(OverflowError):
-            correction.ReedSolomon(32, primitive_polynomial=1 << 16)
+            correction.ReedSolomon(32, field_poly=1 << 16)
         with self.assertRaises(OverflowError):
             correction.ReedSolomon(32, first_root=256)
         with self.assertRaises(OverflowError):

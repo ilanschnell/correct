@@ -130,9 +130,9 @@ For example, convert a hard codeword to soft symbols and erase one symbol::
 Reed-Solomon codes
 ------------------
 
-``correction.ReedSolomon(num_roots, primitive_polynomial=0x11d,
-first_root=1, root_gap=1)`` creates a Reed-Solomon code over 8-bit symbols.  A
-full encoded block contains at most 255 bytes.
+``correction.ReedSolomon(num_roots, field_poly=0x11d, first_root=1,
+root_gap=1)`` creates a Reed-Solomon code over 8-bit symbols.
+A full encoded block contains at most 255 bytes.
 
 ``num_roots`` is the number of parity bytes added to every message and must be
 between 1 and 254.  A block can therefore contain at most
@@ -140,7 +140,7 @@ between 1 and 254.  A block can therefore contain at most
 ``num_roots // 2`` corrupted bytes can be corrected.
 
 The other constructor arguments define the finite field and generator roots.
-The defaults use the primitive polynomial
+The defaults use the field (or primitive) polynomial
 ``x^8 + x^4 + x^3 + x^2 + 1``.  Change these advanced parameters only when
 interoperating with a protocol or implementation that specifies different
 values; not every combination produces a useful code.

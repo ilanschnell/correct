@@ -444,14 +444,14 @@ static int
 rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {
-        "num_roots", "primitive_polynomial", "first_root", "root_gap", NULL
+        "num_roots", "field_poly", "first_root", "root_gap", NULL
     };
     correct_reed_solomon *ctx;
     int num_roots;
-    unsigned int primitive = 0x11d, first_root = 1, root_gap = 1;
+    unsigned int field_poly = 0x11d, first_root = 1, root_gap = 1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|III:ReedSolomon",
-                                     kwlist, &num_roots, &primitive,
+                                     kwlist, &num_roots, &field_poly,
                                      &first_root, &root_gap))
         return -1;
     if (num_roots < 1 || num_roots > 254) {
@@ -459,14 +459,14 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
                         "num_roots must be between 1 and 254");
         return -1;
     }
-    if (primitive > UINT16_MAX || first_root > UINT8_MAX ||
+    if (field_poly > UINT16_MAX || first_root > UINT8_MAX ||
         root_gap > UINT8_MAX) {
         PyErr_SetString(PyExc_OverflowError,
                         "Reed-Solomon parameter is out of range");
         return -1;
     }
 
-    ctx = correct_reed_solomon_create(primitive, first_root, root_gap,
+    ctx = correct_reed_solomon_create(field_poly, first_root, root_gap,
                                       num_roots);
     if (ctx == NULL) {
         PyErr_NoMemory();
@@ -680,7 +680,7 @@ static PyTypeObject RS_Type = {
     .tp_basicsize = sizeof(RSObject),
     .tp_dealloc = (destructor) rs_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = "ReedSolomon(num_roots, primitive_polynomial=0x11d, "
+    .tp_doc = "ReedSolomon(num_roots, field_poly=0x11d, "
               "first_root=1, root_gap=1)",
     .tp_methods = rs_methods,
     .tp_init = (initproc) rs_init,
