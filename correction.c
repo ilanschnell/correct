@@ -522,32 +522,31 @@ rs_encode(RSObject *self, PyObject *obj)
 }
 
 
-static uint8_t *
+static Py_ssize_t
 alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
-                        PyObject *erasures, Py_ssize_t *nerasures)
+                        PyObject *erasures, uint8_t **locations)
 {
-    uint8_t *locations = NULL;
+    uint8_t *locs = NULL;
     PyObject *seq;
-    Py_ssize_t n;               /* number of erasures */
-    Py_ssize_t i;
+    Py_ssize_t nerasures, i;
 
     seq = PySequence_Fast(erasures, "erasures must be a sequence");
     if (seq == NULL)
-        return NULL;
+        return -1;
 
-    n = PySequence_Fast_GET_SIZE(seq);
-    if ((size_t) n > num_roots) {
+    nerasures = PySequence_Fast_GET_SIZE(seq);
+    if ((size_t) nerasures > num_roots) {
         PyErr_SetString(PyExc_ValueError, "too many Reed-Solomon erasures");
         goto error;
     }
-    /* allocate at least one byte so NULL unambiguously indicates failure */
-    locations = PyMem_Malloc((size_t) Py_MAX(n, 1));
-    if (locations == NULL) {
-        PyErr_NoMemory();
-        goto error;
+    if (nerasures) {
+        locs = PyMem_Malloc((size_t) nerasures);
+        if (locs == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
     }
-
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < nerasures; i++) {
         Py_ssize_t pos = PyLong_AsSsize_t(PySequence_Fast_GET_ITEM(seq, i));
 
         if (pos == -1 && PyErr_Occurred())
@@ -558,16 +557,16 @@ alloc_erasure_locations(size_t num_roots, Py_ssize_t len,
                             "erasure position is out of range");
             goto error;
         }
-        locations[i] = (uint8_t) pos;
+        locs[i] = (uint8_t) pos;
     }
     Py_DECREF(seq);
-    *nerasures = n;
-    return locations;
+    *locations = locs;
+    return nerasures;
 
  error:
-    PyMem_Free(locations);
+    PyMem_Free(locs);
     Py_DECREF(seq);
-    return NULL;
+    return -1;
 }
 
 
@@ -626,9 +625,9 @@ rs_decode(RSObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
 
     if (erasures != Py_None) {
-        locations = alloc_erasure_locations(self->num_roots, encoded.len,
-                                            erasures, &nerasures);
-        if (locations == NULL)
+        nerasures = alloc_erasure_locations(self->num_roots, encoded.len,
+                                            erasures, &locations);
+        if (nerasures < 0)
             goto error;
     }
 
