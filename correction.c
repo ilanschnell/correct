@@ -2,6 +2,7 @@
 #include <Python.h>
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "correct.h"
 
@@ -126,8 +127,7 @@ alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
          correct_conv_r13_8_polynomial, correct_conv_r13_9_polynomial},
     };
     correct_convolutional_polynomial_t *poly;
-    const correct_convolutional_polynomial_t *src;
-    Py_ssize_t i;
+    size_t nbytes;
 
     if (inv_rate < 2 || inv_rate > 3 || order < 6 || order > 9) {
         PyErr_Format(PyExc_ValueError, "polynomials must be specified "
@@ -135,14 +135,13 @@ alloc_default_polynomials(Py_ssize_t inv_rate, Py_ssize_t order)
         return NULL;
     }
 
-    poly = PyMem_Malloc((size_t) inv_rate * sizeof(*poly));
+    nbytes = (size_t) inv_rate * sizeof(*poly);
+    poly = PyMem_Malloc(nbytes);
     if (poly == NULL) {
         PyErr_NoMemory();
         return NULL;
     }
-    src = defaults[inv_rate - 2][order - 6];
-    for (i = 0; i < inv_rate; i++)
-        poly[i] = src[i];
+    memcpy(poly, defaults[inv_rate - 2][order - 6], nbytes);
     return poly;
 }
 
