@@ -271,14 +271,13 @@ conv_repr(ConvObject *self)
 
     assert(self->inv_rate >= 2);
 
-    if (self->inv_rate < 10) {
-        for (i = 0; i < self->inv_rate; i++) {
+    if (self->inv_rate <= 36) {
+        for (i = 0; i < self->inv_rate; i++)
             sprintf(buff + strlen(buff), "%d, ", self->poly[i]);
-        }
         buff[strlen(buff) - 2] = 0;   /* remove final ", " */
     }
     else {
-        sprintf(buff, "...");
+        strcat(buff, "...");
     }
     return PyUnicode_FromFormat("correction.Convolutional(%d, %d, (%s))",
                                 self->inv_rate, self->order, buff);
