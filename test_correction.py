@@ -43,8 +43,10 @@ class ConvolutionalTests(unittest.TestCase):
             conv = correction.Convolutional(*args)
             self.assertEqual(repr(conv), s)
             if "..." in s:
-                continue
-            self.assertEqual(repr(eval(s)), s)
+                with self.assertRaises(TypeError):
+                    eval(s)
+            else:
+                self.assertEqual(repr(eval(s)), s)
 
     def test_roundtrip(self):
         for inv_rate, order, polynomials in CONV_CODES:
