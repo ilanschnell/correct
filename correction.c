@@ -7,7 +7,7 @@
 #include "correct.h"
 
 
-#define CORRECTION_VERSION  "0.4.1"
+#define CORRECTION_VERSION  "0.4.2"
 
 
 static PyObject *BitarrayType;
