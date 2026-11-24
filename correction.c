@@ -101,9 +101,9 @@ get_codeword(PyObject *obj, Py_buffer *view, Py_ssize_t *nbits)
 typedef struct {
     PyObject_HEAD
     correct_convolutional *ctx;
-    PyObject *polynomials;
     int inv_rate;
     int order;
+    correct_convolutional_polynomial_t *poly;
 #ifdef Py_GIL_DISABLED
     PyMutex mutex;
 #endif
@@ -115,7 +115,7 @@ conv_dealloc(ConvObject *self)
 {
     if (self->ctx)
         correct_convolutional_destroy(self->ctx);
-    Py_XDECREF(self->polynomials);
+    PyMem_Free(self->poly);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -196,27 +196,6 @@ alloc_custom_polynomials(int inv_rate, PyObject *obj)
     return NULL;
 }
 
-/* convert a polynomial array to a tuple of Python integers */
-static PyObject *
-polynomials_to_tuple(const correct_convolutional_polynomial_t *poly, int n)
-{
-    PyObject *res, *value;
-    int i;
-
-    res = PyTuple_New(n);
-    if (res == NULL)
-        return NULL;
-    for (i = 0; i < n; i++) {
-        value = PyLong_FromUnsignedLong(poly[i]);
-        if (value == NULL) {
-            Py_DECREF(res);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(res, i, value);
-    }
-    return res;
-}
-
 /* create a convolutional context under the global lock when necessary */
 static correct_convolutional *
 create_conv_context(int inv_rate, int order,
@@ -240,7 +219,6 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 {
     static char *kwlist[] = {"inv_rate", "order", "polynomials", NULL};
     PyObject *obj = Py_None;
-    PyObject *polynomials;
     correct_convolutional_polynomial_t *poly;
     correct_convolutional *ctx = NULL;
     int inv_rate, order;
@@ -266,36 +244,44 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
     if (poly == NULL)
         return -1;
 
-    polynomials = polynomials_to_tuple(poly, inv_rate);
-    if (polynomials == NULL) {
+    ctx = create_conv_context(inv_rate, order, poly);
+    if (ctx == NULL) {
+        PyErr_NoMemory();
         PyMem_Free(poly);
         return -1;
     }
-    ctx = create_conv_context(inv_rate, order, poly);
-    PyMem_Free(poly);
-    if (ctx == NULL) {
-        Py_DECREF(polynomials);
-        PyErr_NoMemory();
-        return -1;
-    }
 
-    if (self->ctx)
+    if (self->ctx) {
         correct_convolutional_destroy(self->ctx);
-    Py_XDECREF(self->polynomials);
+        PyMem_Free(self->poly);
+    }
     self->ctx = ctx;
-    self->polynomials = polynomials;
     self->inv_rate = inv_rate;
     self->order = order;
+    self->poly = poly;
     return 0;
 }
 
-/* return a reconstructible representation of a convolutional codec */
+/* return an informative representation of a convolutional codec */
 static PyObject *
 conv_repr(ConvObject *self)
 {
-    return PyUnicode_FromFormat("correction.Convolutional(%d, %d, %R)",
-                                self->inv_rate, self->order,
-                                self->polynomials);
+    char buff[256] = "";
+    int i;
+
+    assert(self->inv_rate >= 2);
+
+    if (self->inv_rate < 10) {
+        for (i = 0; i < self->inv_rate; i++) {
+            sprintf(buff + strlen(buff), "%d, ", self->poly[i]);
+        }
+        buff[strlen(buff) - 2] = 0;   /* remove final ", " */
+    }
+    else {
+        sprintf(buff, "...");
+    }
+    return PyUnicode_FromFormat("correction.Convolutional(%d, %d, (%s))",
+                                self->inv_rate, self->order, buff);
 }
 
 /* encode a message as a convolutional codeword */
