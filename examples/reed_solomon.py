@@ -52,7 +52,8 @@ if __name__ == "__main__":
     # The channel corruption is random but reproducible for this example.
     rng = random.Random(2026)
     text = b"Reed-Solomon protects data from transmission errors.\n"
-    message = (text * (10 * 1024 // len(text) + 1))[:10 * 1024]
+    length = 10 * 1024
+    message = (text * (length // len(text) + 1))[:length]
 
     blocks = transmit(message, rng)
     recovered = receive(blocks)
