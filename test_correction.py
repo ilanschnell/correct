@@ -28,17 +28,19 @@ CONV_CODES = [
 class ConvolutionalTests(unittest.TestCase):
 
     def test_repr(self):
+        mv, ms = 0o177777, "0o177777"
+        self.assertEqual(mv, 65535)
         for args, s in [
             ((2, 7, None),
              "Convolutional(2, 7, (0o161, 0o127))"),
             ((2, 5, (0o35, 0o23)),
              "Convolutional(2, 5, (0o35, 0o23))"),
-            ((2, 4, (0o0, 0o177777)),
-             "Convolutional(2, 4, (0o0, 0o177777))"),
-            ((25, 10, 25 * (0o123,)),
-             "Convolutional(25, 10, (%s))" % ", ".join(25 * ["0o123"])),
-            ((26, 4, 26 * (0o123,)),
-             "Convolutional(26, 4, (...))"),
+            ((2, 4, (0o0, 0o123456)),
+             "Convolutional(2, 4, (0o0, 0o123456))"),
+            ((25, 10, 25 * (mv,)),
+             "Convolutional(25, 10, (%s))" % ", ".join(25 * [ms])),
+            ((26, 10, 26 * (mv,)),
+             "Convolutional(26, 10, (%s, ...))" % ", ".join(25 * [ms])),
         ]:
             s = "correction." + s
             conv = correction.Convolutional(*args)

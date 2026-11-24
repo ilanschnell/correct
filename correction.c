@@ -266,18 +266,17 @@ conv_init(ConvObject *self, PyObject *args, PyObject *kwargs)
 static PyObject *
 conv_repr(ConvObject *self)
 {
-    char buff[256] = "...";
+    char buff[256] = "";
     int i;
 
     assert(self->inv_rate >= 2);
 
-    if (self->inv_rate <= 25) {
-        *buff = 0;
-        for (i = 0; i < self->inv_rate; i++)
-            sprintf(buff + strlen(buff), "0o%o, ",
-                    (unsigned int) self->poly[i]);
+    for (i = 0; i < self->inv_rate && i < 25; i++)
+        sprintf(buff + strlen(buff), "0o%o, ", (unsigned int) self->poly[i]);
+    if (self->inv_rate <= 25)
         buff[strlen(buff) - 2] = 0;   /* remove final ", " */
-    }
+    else
+        strcat(buff, "...");
     return PyUnicode_FromFormat("correction.Convolutional(%d, %d, (%s))",
                                 self->inv_rate, self->order, buff);
 }
