@@ -478,10 +478,9 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
         "num_roots", "field_poly", "first_root", "root_gap", NULL
     };
     correct_reed_solomon *ctx;
-    int num_roots;
-    unsigned int field_poly = 0x11d, first_root = 1, root_gap = 1;
+    int num_roots, field_poly = 0x11d, first_root = 1, root_gap = 1;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|III:ReedSolomon",
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|iii:ReedSolomon",
                                      kwlist, &num_roots, &field_poly,
                                      &first_root, &root_gap))
         return -1;
@@ -490,10 +489,11 @@ rs_init(RSObject *self, PyObject *args, PyObject *kwargs)
                         "num_roots must be between 1 and 254");
         return -1;
     }
-    if (field_poly > UINT16_MAX || first_root > UINT8_MAX ||
-        root_gap > UINT8_MAX) {
+    if (field_poly < 0 || field_poly > UINT16_MAX ||
+        first_root < 0 || first_root > UINT8_MAX ||
+        root_gap < 0 || root_gap > UINT8_MAX) {
         PyErr_SetString(PyExc_OverflowError,
-                        "Reed-Solomon parameter is out of range");
+                        "Reed-Solomon parameter out of range");
         return -1;
     }
 
