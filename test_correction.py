@@ -12,6 +12,8 @@ import correction
 
 GIL_DISABLED = get_config_var("Py_GIL_DISABLED") in (1, "1")
 
+# -------------------------  Convolutional codes  ------------------------
+
 CONV_CODES = [
     (2, 6, (0o73, 0o61)),
     (2, 7, (0o161, 0o127)),
@@ -22,7 +24,6 @@ CONV_CODES = [
     (3, 8, (0o333, 0o257, 0o351)),
     (3, 9, (0o417, 0o627, 0o675)),
 ]
-
 
 class ConvolutionalTests(unittest.TestCase):
 
@@ -136,6 +137,7 @@ class ConvolutionalTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             correction.Convolutional(2, 7, ('x', 0o127))
 
+# --------------------------  Reed-Solomon codes  ------------------------
 
 class ReedSolomonTests(unittest.TestCase):
 
@@ -215,9 +217,9 @@ class ReedSolomonTests(unittest.TestCase):
         with self.assertRaises(OverflowError):
             correction.ReedSolomon(32, root_gap=256)
 
+# ----------------------------  Free-threading  --------------------------
 
 NTHREADS = 4
-
 
 def run_concurrently(func):
     """Call func simultaneously in several threads and return the results."""
@@ -230,7 +232,6 @@ def run_concurrently(func):
     with ThreadPoolExecutor(max_workers=NTHREADS) as executor:
         futures = [executor.submit(worker, i) for i in range(NTHREADS)]
         return [future.result() for future in futures]
-
 
 @unittest.skipUnless(GIL_DISABLED, "requires free-threaded Python")
 class FreeThreadingTests(unittest.TestCase):
