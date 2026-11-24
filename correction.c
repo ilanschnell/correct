@@ -271,9 +271,10 @@ conv_repr(ConvObject *self)
 
     assert(self->inv_rate >= 2);
 
-    if (self->inv_rate <= 36) {
+    if (self->inv_rate <= 25) {
         for (i = 0; i < self->inv_rate; i++)
-            sprintf(buff + strlen(buff), "%d, ", self->poly[i]);
+            sprintf(buff + strlen(buff), "0o%o, ",
+                    (unsigned int) self->poly[i]);
         buff[strlen(buff) - 2] = 0;   /* remove final ", " */
     }
     else {
