@@ -741,6 +741,9 @@ static struct PyModuleDef moduledef = {
 static int
 add_type(PyObject *module, const char *name, PyTypeObject *type)
 {
+    if (PyType_Ready(type) < 0)
+        return -1;
+
     Py_INCREF(type);
     if (PyModule_AddObject(module, name, (PyObject *) type) < 0) {
         Py_DECREF(type);
@@ -754,9 +757,6 @@ PyMODINIT_FUNC
 PyInit_correction(void)
 {
     PyObject *module, *bitarray;
-
-    if (PyType_Ready(&Conv_Type) < 0 || PyType_Ready(&RS_Type) < 0)
-        return NULL;
 
     bitarray = PyImport_ImportModule("bitarray");
     if (bitarray == NULL)
