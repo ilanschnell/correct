@@ -272,8 +272,10 @@ class FreeThreadingTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    print("correction version:", correction.__version__)
-    print("bitarray version:", bitarray.__version__)
+    print("Version:")
+    print("  Python: %d.%d.%d" % sys.version_info[:3])
+    print("  bitarray:", bitarray.__version__)
+    print("  correction:", correction.__version__)
     print("GIL_DISABLED:", GIL_DISABLED)
     print("DEBUG: %s" % getattr(correction, "DEBUG", 0))
     unittest.main()
