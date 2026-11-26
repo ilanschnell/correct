@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from sysconfig import get_config_var
 from threading import Barrier
 
-from bitarray import bitarray
+import bitarray
 
 import correction
 
@@ -56,7 +56,7 @@ class ConvolutionalTests(unittest.TestCase):
             conv = correction.Convolutional(inv_rate, order, polynomials)
             for msg in (b'', b'a', b'Hello world!', bytes(range(256))):
                 encoded = conv.encode(msg)
-                self.assertIs(type(encoded), bitarray)
+                self.assertIs(type(encoded), bitarray.bitarray)
                 self.assertEqual(encoded.endian, 'big')
                 self.assertEqual(len(encoded) % inv_rate, 0)
                 self.assertEqual(conv.decode(encoded), msg)
@@ -110,7 +110,7 @@ class ConvolutionalTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             conv.decode(encoded.tobytes())
 
-        little = bitarray(encoded, endian='little')
+        little = bitarray.bitarray(encoded, endian='little')
         with self.assertRaises(ValueError):
             conv.decode(little)
 
@@ -273,6 +273,7 @@ class FreeThreadingTests(unittest.TestCase):
 
 if __name__ == '__main__':
     print("correction version:", correction.__version__)
+    print("bitarray version:", bitarray.__version__)
     print("GIL_DISABLED:", GIL_DISABLED)
     print("DEBUG: %s" % getattr(correction, "DEBUG", 0))
     unittest.main()
